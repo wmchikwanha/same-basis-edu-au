@@ -65,7 +65,7 @@ function SettingsPage() {
           <dl className="mt-4 grid gap-3 sm:grid-cols-2 text-sm">
             <div>
               <dt className="section-label">School</dt>
-              <dd className="mt-1 text-foreground">{demoUser.school}</dd>
+              <dd className="mt-1 text-foreground">{demoUser.schoolName}</dd>
             </div>
             <div>
               <dt className="section-label">Jurisdiction</dt>
