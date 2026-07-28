@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as StudentsRouteImport } from './routes/students'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as PlannerRouteImport } from './routes/planner'
 import { Route as HelpRouteImport } from './routes/help'
 import { Route as EvidenceRouteImport } from './routes/evidence'
@@ -20,6 +21,11 @@ import { Route as ClassesClassIdRouteImport } from './routes/classes.$classId'
 const StudentsRoute = StudentsRouteImport.update({
   id: '/students',
   path: '/students',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PlannerRoute = PlannerRouteImport.update({
@@ -58,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/evidence': typeof EvidenceRoute
   '/help': typeof HelpRoute
   '/planner': typeof PlannerRoute
+  '/settings': typeof SettingsRoute
   '/students': typeof StudentsRoute
   '/classes/$classId': typeof ClassesClassIdRoute
   '/classes/': typeof ClassesIndexRoute
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/evidence': typeof EvidenceRoute
   '/help': typeof HelpRoute
   '/planner': typeof PlannerRoute
+  '/settings': typeof SettingsRoute
   '/students': typeof StudentsRoute
   '/classes/$classId': typeof ClassesClassIdRoute
   '/classes': typeof ClassesIndexRoute
@@ -77,6 +85,7 @@ export interface FileRoutesById {
   '/evidence': typeof EvidenceRoute
   '/help': typeof HelpRoute
   '/planner': typeof PlannerRoute
+  '/settings': typeof SettingsRoute
   '/students': typeof StudentsRoute
   '/classes/$classId': typeof ClassesClassIdRoute
   '/classes/': typeof ClassesIndexRoute
@@ -88,6 +97,7 @@ export interface FileRouteTypes {
     | '/evidence'
     | '/help'
     | '/planner'
+    | '/settings'
     | '/students'
     | '/classes/$classId'
     | '/classes/'
@@ -97,6 +107,7 @@ export interface FileRouteTypes {
     | '/evidence'
     | '/help'
     | '/planner'
+    | '/settings'
     | '/students'
     | '/classes/$classId'
     | '/classes'
@@ -106,6 +117,7 @@ export interface FileRouteTypes {
     | '/evidence'
     | '/help'
     | '/planner'
+    | '/settings'
     | '/students'
     | '/classes/$classId'
     | '/classes/'
@@ -116,6 +128,7 @@ export interface RootRouteChildren {
   EvidenceRoute: typeof EvidenceRoute
   HelpRoute: typeof HelpRoute
   PlannerRoute: typeof PlannerRoute
+  SettingsRoute: typeof SettingsRoute
   StudentsRoute: typeof StudentsRoute
   ClassesClassIdRoute: typeof ClassesClassIdRoute
   ClassesIndexRoute: typeof ClassesIndexRoute
@@ -128,6 +141,13 @@ declare module '@tanstack/react-router' {
       path: '/students'
       fullPath: '/students'
       preLoaderRoute: typeof StudentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/planner': {
@@ -180,6 +200,7 @@ const rootRouteChildren: RootRouteChildren = {
   EvidenceRoute: EvidenceRoute,
   HelpRoute: HelpRoute,
   PlannerRoute: PlannerRoute,
+  SettingsRoute: SettingsRoute,
   StudentsRoute: StudentsRoute,
   ClassesClassIdRoute: ClassesClassIdRoute,
   ClassesIndexRoute: ClassesIndexRoute,
