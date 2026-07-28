@@ -46,9 +46,10 @@ function SettingsPage() {
               <dd className="mt-1 text-foreground">{demoUser.role}</dd>
             </div>
             <div>
-              <dt className="section-label">Email</dt>
-              <dd className="mt-1 text-foreground">{demoUser.email}</dd>
+              <dt className="section-label">State</dt>
+              <dd className="mt-1 text-foreground">{demoUser.state}</dd>
             </div>
+
             <div>
               <dt className="section-label">Mode</dt>
               <dd className="mt-1 text-foreground">Demo (synthetic data)</dd>
