@@ -17,10 +17,10 @@ export const footerText = `${brand.name} | Developed by ${brand.developer} | © 
 
 /** Demo persona shown in the top bar while running in demo mode. */
 export const demoUser = {
-  fullName: "Walter Chikwanha",
-  firstName: "Walter",
-  schoolName: "Marrickville High School",
+  fullName: "Teacher Testing",
+  firstName: "Teacher",
+  schoolName: "Main Stream High School",
   state: "NSW",
   role: "Classroom Teacher",
-  initials: "WC",
+  initials: "TT",
 } as const;
