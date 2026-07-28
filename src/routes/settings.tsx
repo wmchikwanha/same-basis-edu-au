@@ -39,7 +39,7 @@ function SettingsPage() {
           <dl className="mt-4 grid gap-3 sm:grid-cols-2 text-sm">
             <div>
               <dt className="section-label">Name</dt>
-              <dd className="mt-1 text-foreground">{demoUser.name}</dd>
+              <dd className="mt-1 text-foreground">{demoUser.fullName}</dd>
             </div>
             <div>
               <dt className="section-label">Role</dt>
