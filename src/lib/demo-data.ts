@@ -65,15 +65,16 @@ export interface AdjustmentRecord {
 
 export interface EvidenceLog {
   id: string;
-  adjustmentId: string;
+  adjustmentId: string | null;
   studentId: string;
   logDate: string;
   weekNumber: number;
   pillar: NccdPillar;
   evidenceSummary: string;
-  source: "AI-generated" | "teacher-edited";
+  source: "AI-generated" | "teacher-edited" | "teacher-recorded";
   createdAt: string;
 }
+
 
 export const demoClass: ClassRecord = {
   id: "class-y8-science-b",
