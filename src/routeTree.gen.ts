@@ -13,7 +13,9 @@ import { Route as StudentsRouteImport } from './routes/students'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as PlannerRouteImport } from './routes/planner'
 import { Route as HelpRouteImport } from './routes/help'
+import { Route as FamilyRouteImport } from './routes/family'
 import { Route as EvidenceRouteImport } from './routes/evidence'
+import { Route as CrisisRouteImport } from './routes/crisis'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ClassesIndexRouteImport } from './routes/classes.index'
 import { Route as ClassesClassIdRouteImport } from './routes/classes.$classId'
@@ -38,9 +40,19 @@ const HelpRoute = HelpRouteImport.update({
   path: '/help',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FamilyRoute = FamilyRouteImport.update({
+  id: '/family',
+  path: '/family',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const EvidenceRoute = EvidenceRouteImport.update({
   id: '/evidence',
   path: '/evidence',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrisisRoute = CrisisRouteImport.update({
+  id: '/crisis',
+  path: '/crisis',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -61,7 +73,9 @@ const ClassesClassIdRoute = ClassesClassIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/crisis': typeof CrisisRoute
   '/evidence': typeof EvidenceRoute
+  '/family': typeof FamilyRoute
   '/help': typeof HelpRoute
   '/planner': typeof PlannerRoute
   '/settings': typeof SettingsRoute
@@ -71,7 +85,9 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/crisis': typeof CrisisRoute
   '/evidence': typeof EvidenceRoute
+  '/family': typeof FamilyRoute
   '/help': typeof HelpRoute
   '/planner': typeof PlannerRoute
   '/settings': typeof SettingsRoute
@@ -82,7 +98,9 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/crisis': typeof CrisisRoute
   '/evidence': typeof EvidenceRoute
+  '/family': typeof FamilyRoute
   '/help': typeof HelpRoute
   '/planner': typeof PlannerRoute
   '/settings': typeof SettingsRoute
@@ -94,7 +112,9 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/crisis'
     | '/evidence'
+    | '/family'
     | '/help'
     | '/planner'
     | '/settings'
@@ -104,7 +124,9 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/crisis'
     | '/evidence'
+    | '/family'
     | '/help'
     | '/planner'
     | '/settings'
@@ -114,7 +136,9 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/crisis'
     | '/evidence'
+    | '/family'
     | '/help'
     | '/planner'
     | '/settings'
@@ -125,7 +149,9 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CrisisRoute: typeof CrisisRoute
   EvidenceRoute: typeof EvidenceRoute
+  FamilyRoute: typeof FamilyRoute
   HelpRoute: typeof HelpRoute
   PlannerRoute: typeof PlannerRoute
   SettingsRoute: typeof SettingsRoute
@@ -164,11 +190,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HelpRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/family': {
+      id: '/family'
+      path: '/family'
+      fullPath: '/family'
+      preLoaderRoute: typeof FamilyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/evidence': {
       id: '/evidence'
       path: '/evidence'
       fullPath: '/evidence'
       preLoaderRoute: typeof EvidenceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crisis': {
+      id: '/crisis'
+      path: '/crisis'
+      fullPath: '/crisis'
+      preLoaderRoute: typeof CrisisRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -197,7 +237,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CrisisRoute: CrisisRoute,
   EvidenceRoute: EvidenceRoute,
+  FamilyRoute: FamilyRoute,
   HelpRoute: HelpRoute,
   PlannerRoute: PlannerRoute,
   SettingsRoute: SettingsRoute,

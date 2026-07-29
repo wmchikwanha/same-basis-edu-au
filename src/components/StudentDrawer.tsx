@@ -172,25 +172,24 @@ export function StudentDrawer({
             <Target size={16} aria-hidden="true" />
             Generate adjustment
           </Link>
-          <button
-            type="button"
-            disabled
-            title="Coming in the next release"
-            className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-border px-4 text-sm font-medium text-muted-foreground"
+          <Link
+            to="/crisis"
+            search={{ student: student.id }}
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-border px-4 text-sm font-medium text-foreground hover:bg-muted"
           >
             <LifeBuoy size={16} aria-hidden="true" />
             Crisis guidance
-          </button>
-          <button
-            type="button"
-            disabled
-            title="Coming in the next release"
-            className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-border px-4 text-sm font-medium text-muted-foreground"
+          </Link>
+          <Link
+            to="/family"
+            search={{ student: student.id }}
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-border px-4 text-sm font-medium text-foreground hover:bg-muted"
           >
             <MessageCircle size={16} aria-hidden="true" />
             Family message
-          </button>
+          </Link>
         </footer>
+
       </div>
     </div>
   );
