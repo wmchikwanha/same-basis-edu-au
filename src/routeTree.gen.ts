@@ -13,6 +13,7 @@ import { Route as StudentsRouteImport } from './routes/students'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as PlannerRouteImport } from './routes/planner'
 import { Route as HelpRouteImport } from './routes/help'
+import { Route as FamilyRouteImport } from './routes/family'
 import { Route as EvidenceRouteImport } from './routes/evidence'
 import { Route as CrisisRouteImport } from './routes/crisis'
 import { Route as IndexRouteImport } from './routes/index'
@@ -37,6 +38,11 @@ const PlannerRoute = PlannerRouteImport.update({
 const HelpRoute = HelpRouteImport.update({
   id: '/help',
   path: '/help',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FamilyRoute = FamilyRouteImport.update({
+  id: '/family',
+  path: '/family',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EvidenceRoute = EvidenceRouteImport.update({
@@ -69,6 +75,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/crisis': typeof CrisisRoute
   '/evidence': typeof EvidenceRoute
+  '/family': typeof FamilyRoute
   '/help': typeof HelpRoute
   '/planner': typeof PlannerRoute
   '/settings': typeof SettingsRoute
@@ -80,6 +87,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/crisis': typeof CrisisRoute
   '/evidence': typeof EvidenceRoute
+  '/family': typeof FamilyRoute
   '/help': typeof HelpRoute
   '/planner': typeof PlannerRoute
   '/settings': typeof SettingsRoute
@@ -92,6 +100,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/crisis': typeof CrisisRoute
   '/evidence': typeof EvidenceRoute
+  '/family': typeof FamilyRoute
   '/help': typeof HelpRoute
   '/planner': typeof PlannerRoute
   '/settings': typeof SettingsRoute
@@ -105,6 +114,7 @@ export interface FileRouteTypes {
     | '/'
     | '/crisis'
     | '/evidence'
+    | '/family'
     | '/help'
     | '/planner'
     | '/settings'
@@ -116,6 +126,7 @@ export interface FileRouteTypes {
     | '/'
     | '/crisis'
     | '/evidence'
+    | '/family'
     | '/help'
     | '/planner'
     | '/settings'
@@ -127,6 +138,7 @@ export interface FileRouteTypes {
     | '/'
     | '/crisis'
     | '/evidence'
+    | '/family'
     | '/help'
     | '/planner'
     | '/settings'
@@ -139,6 +151,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CrisisRoute: typeof CrisisRoute
   EvidenceRoute: typeof EvidenceRoute
+  FamilyRoute: typeof FamilyRoute
   HelpRoute: typeof HelpRoute
   PlannerRoute: typeof PlannerRoute
   SettingsRoute: typeof SettingsRoute
@@ -175,6 +188,13 @@ declare module '@tanstack/react-router' {
       path: '/help'
       fullPath: '/help'
       preLoaderRoute: typeof HelpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/family': {
+      id: '/family'
+      path: '/family'
+      fullPath: '/family'
+      preLoaderRoute: typeof FamilyRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/evidence': {
@@ -219,6 +239,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CrisisRoute: CrisisRoute,
   EvidenceRoute: EvidenceRoute,
+  FamilyRoute: FamilyRoute,
   HelpRoute: HelpRoute,
   PlannerRoute: PlannerRoute,
   SettingsRoute: SettingsRoute,

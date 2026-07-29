@@ -7,6 +7,8 @@ import {
   Sparkles,
   ClipboardCheck,
   LifeBuoy,
+  MessageCircle,
+  HeartPulse,
   Settings as SettingsIcon,
   Menu,
   Bell,
@@ -21,12 +23,21 @@ const navItems = [
   { to: "/classes", label: "My Classes", icon: Users },
   { to: "/students", label: "Student Profiles", icon: UserRound },
   { to: "/planner", label: "Lesson Planner", icon: Sparkles },
+  { to: "/crisis", label: "Crisis Guidance", icon: HeartPulse },
+  { to: "/family", label: "Family Messages", icon: MessageCircle },
   { to: "/evidence", label: "Evidence Log", icon: ClipboardCheck },
   { to: "/help", label: "Help & Info", icon: LifeBuoy },
   { to: "/settings", label: "Settings", icon: SettingsIcon },
 ] as const;
 
-const mobileNavItems = navItems.slice(0, 5);
+const mobileNavItems = [
+  navItems[0],
+  navItems[2],
+  navItems[3],
+  navItems[4],
+  navItems[6],
+] as const;
+
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
   return (
