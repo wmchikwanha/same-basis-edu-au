@@ -154,10 +154,10 @@ export function AppShell({
             </button>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-foreground">
-                {demoUser.schoolName}
+                {profile?.schoolName ?? demoUser.schoolName}
               </p>
               <p className="truncate text-xs text-muted-foreground">
-                {today || "\u00a0"} · {demoUser.state}
+                {today || "\u00a0"} · {profile?.state ?? demoUser.state}
               </p>
             </div>
             <button
@@ -169,12 +169,21 @@ export function AppShell({
             </button>
             <div className="flex items-center gap-2 rounded-full bg-card px-2 py-1.5 shadow-warm-sm">
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
-                {demoUser.initials}
+                {initials}
               </span>
               <span className="hidden pr-1 text-sm font-medium sm:block">
-                {demoUser.fullName}
+                {profile?.fullName ?? demoUser.fullName}
               </span>
             </div>
+            <button
+              onClick={signOut}
+              aria-label="Sign out"
+              title="Sign out"
+              className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <LogOut size={20} aria-hidden="true" />
+            </button>
+
           </div>
         </header>
 
