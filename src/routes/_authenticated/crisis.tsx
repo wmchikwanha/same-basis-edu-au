@@ -20,7 +20,7 @@ import { useAppState, newId, weekNumberFor } from "@/lib/app-state";
 import { generateCrisisGuidance } from "@/lib/crisis.functions";
 import type { CrisisGuidance } from "@/lib/ai-schemas";
 
-export const Route = createFileRoute("/crisis")({
+export const Route = createFileRoute("/_authenticated/crisis")({
   validateSearch: (search: Record<string, unknown>) => ({
     student: typeof search.student === "string" ? search.student : undefined,
   }),

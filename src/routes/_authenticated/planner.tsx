@@ -23,7 +23,7 @@ import { useAppState, newId, weekNumberFor } from "@/lib/app-state";
 import { generateAdjustment } from "@/lib/adjustments.functions";
 import { isCald, type AdjustmentRecord, type Student } from "@/lib/demo-data";
 
-export const Route = createFileRoute("/planner")({
+export const Route = createFileRoute("/_authenticated/planner")({
   head: () => ({
     meta: [
       { title: "Lesson Planner — Generate Reasonable Adjustments | SameBasis" },

@@ -1,224 +1,142 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
-  Sparkles,
-  Users,
-  ClipboardCheck,
-  TrendingUp,
-  Clock,
   ArrowRight,
+  ClipboardCheck,
+  HeartPulse,
+  MessageCircle,
+  ShieldCheck,
+  Sparkles,
 } from "lucide-react";
-import { AppShell } from "@/components/AppShell";
-import { useAppState, weekNumberFor } from "@/lib/app-state";
-import { demoUser } from "@/lib/brand";
-import { NccdLevelBadge } from "@/components/Badges";
-import { useEffect, useState } from "react";
+import { brand, footerText } from "@/lib/brand";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "SameBasis Dashboard — Inclusive Teaching Decision Support" },
+      { title: "SameBasis | Inclusive teaching adjustments for Australian classrooms" },
       {
         name: "description",
         content:
-          "See today's classes, NCCD evidence completeness and recent reasonable adjustments for your students at a glance.",
+          "SameBasis turns disability, cultural and trauma context into practical, NCCD-ready classroom adjustments — generated in seconds and always teacher-reviewed.",
       },
-      { property: "og:title", content: "SameBasis Dashboard — Inclusive Teaching Decision Support" },
+      {
+        property: "og:title",
+        content: "SameBasis | Inclusive teaching adjustments, ready for the next lesson",
+      },
       {
         property: "og:description",
         content:
-          "See today's classes, NCCD evidence completeness and recent reasonable adjustments for your students at a glance.",
+          "Moment-specific adjustments, crisis guidance, family messages and NCCD evidence in one warm, teacher-controlled tool.",
       },
     ],
   }),
-  component: Dashboard,
+  component: Landing,
 });
 
-function StatCard({
-  label,
-  value,
-  hint,
-  icon: Icon,
-}: {
-  label: string;
-  value: string;
-  hint: string;
-  icon: typeof Users;
-}) {
+const features = [
+  {
+    icon: Sparkles,
+    title: "Adjustment generator",
+    body: "Pick a class and a curriculum topic. Get one specific, usable adjustment per student — with the UDL benefit, the cultural read and the trauma read spelled out.",
+  },
+  {
+    icon: HeartPulse,
+    title: "Moment-of-crisis guidance",
+    body: "Trauma-informed steps, the exact words to use, what not to do, and clear escalation criteria for the student in front of you.",
+  },
+  {
+    icon: MessageCircle,
+    title: "Family communication",
+    body: "Strengths-first messages home in plain English, shaped by each family's language and communication preference.",
+  },
+  {
+    icon: ClipboardCheck,
+    title: "NCCD evidence, automatically",
+    body: "Every adjustment you implement becomes a dated evidence entry across the four NCCD pillars, exportable for census.",
+  },
+];
+
+function Landing() {
   return (
-    <div className="rounded-xl bg-card p-5 shadow-warm-sm">
-      <div className="flex items-center justify-between">
-        <p className="section-label">{label}</p>
-        <Icon size={20} className="text-primary" aria-hidden="true" />
-      </div>
-      <p className="mt-3 text-3xl font-bold text-foreground">{value}</p>
-      <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
-    </div>
-  );
-}
-
-function Dashboard() {
-  const { students, classes, adjustments, evidenceLogs, hydrated } = useAppState();
-  const [greeting, setGreeting] = useState("Hello");
-
-  useEffect(() => {
-    const h = new Date().getHours();
-    setGreeting(h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening");
-  }, []);
-
-  const implemented = adjustments.filter((a) => a.status === "implemented");
-  const currentWeek = weekNumberFor(new Date());
-  const studentsWithEvidence = new Set(evidenceLogs.map((l) => l.studentId));
-  const completeness = Math.round((studentsWithEvidence.size / students.length) * 100);
-  const awaitingEvidence = students.filter((s) => !studentsWithEvidence.has(s.id));
-
-  return (
-    <AppShell
-      title={`${greeting}, ${demoUser.firstName}.`}
-      description={
-        hydrated
-          ? `You have ${students.length} students with active adjustment profiles today.`
-          : "Loading your classroom…"
-      }
-      action={
-        <Link
-          to="/planner"
-          className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground shadow-warm-sm transition-colors hover:bg-primary-light"
-        >
-          <Sparkles size={18} aria-hidden="true" />
-          Plan a lesson
-        </Link>
-      }
-    >
-      <div className="flex flex-col gap-6">
-        <section className="rounded-xl bg-primary p-6 text-primary-foreground shadow-warm-md">
-          <p className="text-xs font-medium uppercase tracking-[0.08em] text-primary-foreground/75">
-            Term 3 · Week {currentWeek} of 10
-          </p>
-          <h2 className="mt-2 max-w-2xl text-xl font-semibold sm:text-2xl">
-            Six students, six different entry points into Chemical Reactions.
-          </h2>
-          <p className="mt-2 max-w-2xl text-sm text-primary-foreground/85">
-            SameBasis connects disability, culture and curriculum so the adjustment you make in
-            the next five minutes is specific, defensible and already logged for NCCD.
-          </p>
-        </section>
-
-        <section aria-label="Quick statistics" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard
-            label="Students"
-            value={String(students.length)}
-            hint="Across 1 class"
-            icon={Users}
-          />
-          <StatCard
-            label="NCCD profiles"
-            value={String(students.length)}
-            hint="All profiles complete"
-            icon={ClipboardCheck}
-          />
-          <StatCard
-            label="Implemented this week"
-            value={String(implemented.length)}
-            hint="Adjustments put into practice"
-            icon={TrendingUp}
-          />
-          <StatCard
-            label="Evidence completeness"
-            value={`${completeness}%`}
-            hint={`${studentsWithEvidence.size} of ${students.length} students have logged evidence`}
-            icon={Clock}
-          />
-        </section>
-
-        <div className="grid gap-6 lg:grid-cols-3">
-          <section className="lg:col-span-2">
-            <h2 className="section-label mb-3">Today's classes</h2>
-            <div className="flex flex-col gap-4">
-              {classes.map((c) => (
-                <Link
-                  key={c.id}
-                  to="/classes/$classId"
-                  params={{ classId: c.id }}
-                  className="group flex items-center justify-between gap-4 rounded-xl bg-card p-5 shadow-warm-sm transition-shadow hover:shadow-warm-md"
-                >
-                  <div>
-                    <p className="font-semibold text-foreground group-hover:text-primary">
-                      {c.name}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      Year {c.yearLevel} {c.subject} ·{" "}
-                      {students.filter((s) => s.classId === c.id).length} students with active
-                      profiles
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {students
-                        .filter((s) => s.classId === c.id)
-                        .map((s) => (
-                          <NccdLevelBadge key={s.id} level={s.profile.nccdLevel} />
-                        ))}
-                    </div>
-                  </div>
-                  <ArrowRight
-                    size={20}
-                    className="shrink-0 text-muted-foreground group-hover:text-primary"
-                    aria-hidden="true"
-                  />
-                </Link>
-              ))}
-            </div>
-          </section>
-
-          <section>
-            <h2 className="section-label mb-3">Gentle reminders</h2>
-            <div className="rounded-xl bg-accent/20 p-5">
-              <p className="text-sm text-foreground">
-                {awaitingEvidence.length === 0
-                  ? "Every student has evidence logged this cycle. Nothing needs your attention."
-                  : `${awaitingEvidence.length} ${awaitingEvidence.length === 1 ? "student has" : "students have"} no evidence logged yet in this 10-week cycle. There is still time.`}
-              </p>
-              {awaitingEvidence.length > 0 && (
-                <ul className="mt-3 flex flex-col gap-1.5 text-sm text-foreground">
-                  {awaitingEvidence.slice(0, 4).map((s) => (
-                    <li key={s.id}>· {s.preferredName} {s.lastName}</li>
-                  ))}
-                </ul>
-              )}
-              <Link
-                to="/evidence"
-                className="mt-4 inline-flex min-h-[44px] items-center gap-2 text-sm font-semibold text-primary hover:underline"
-              >
-                Open the Evidence Log
-                <ArrowRight size={16} aria-hidden="true" />
-              </Link>
-            </div>
-
-            <h2 className="section-label mb-3 mt-6">Recent activity</h2>
-            <div className="rounded-xl bg-card p-5 shadow-warm-sm">
-              {adjustments.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Nothing yet. Generate your first set of adjustments from the Lesson Planner.
-                </p>
-              ) : (
-                <ul className="flex flex-col gap-4">
-                  {adjustments.slice(0, 5).map((a) => {
-                    const s = students.find((st) => st.id === a.studentId);
-                    return (
-                      <li key={a.id} className="text-sm">
-                        <p className="font-medium text-foreground">
-                          {s?.preferredName ?? "Student"} · {a.status}
-                        </p>
-                        <p className="line-clamp-2 text-muted-foreground">
-                          {a.generatedAdjustment}
-                        </p>
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
-          </section>
+    <div className="flex min-h-screen flex-col bg-background">
+      <header className="sticky top-0 z-30 border-b border-border/70 bg-background/90 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-[1120px] items-center gap-3 px-4 py-3 sm:px-6">
+          <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-sm font-bold text-primary-foreground">
+            SB
+          </span>
+          <span className="flex-1 text-base font-semibold text-foreground">{brand.name}</span>
+          <Link
+            to="/auth"
+            className="inline-flex min-h-[44px] items-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-light"
+          >
+            Try the demo
+          </Link>
         </div>
-      </div>
-    </AppShell>
+      </header>
+
+      <main className="mx-auto w-full max-w-[1120px] flex-1 px-4 sm:px-6">
+        <section className="py-14 sm:py-20">
+          <p className="text-sm font-semibold uppercase tracking-wide text-primary">
+            Australian classrooms · NCCD ready
+          </p>
+          <h1 className="mt-3 max-w-3xl text-4xl font-bold leading-tight text-foreground sm:text-5xl">
+            Every student. Same basis for learning.
+          </h1>
+          <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted-foreground sm:text-lg">
+            {brand.positioning} SameBasis reads the whole child — disability, culture, trauma and
+            strengths — and hands you one adjustment you can actually use in the next lesson.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link
+              to="/auth"
+              className="inline-flex min-h-[48px] items-center gap-2 rounded-lg bg-primary px-6 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-light"
+            >
+              Start free — no verification
+              <ArrowRight size={18} aria-hidden="true" />
+            </Link>
+            <Link
+              to="/auth"
+              className="inline-flex min-h-[48px] items-center rounded-lg border border-input bg-card px-6 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
+            >
+              Sign in
+            </Link>
+          </div>
+          <p className="mt-4 flex items-start gap-2 text-xs text-muted-foreground">
+            <ShieldCheck size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
+            Trial accounts open instantly with a temporary email address. All student data in the
+            trial is synthetic.
+          </p>
+        </section>
+
+        <section aria-label="What SameBasis does" className="grid gap-6 pb-16 sm:grid-cols-2">
+          {features.map(({ icon: Icon, title, body }) => (
+            <article key={title} className="rounded-xl bg-card p-6 shadow-warm-sm">
+              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary text-primary">
+                <Icon size={20} aria-hidden="true" />
+              </span>
+              <h2 className="mt-4 text-lg font-semibold text-foreground">{title}</h2>
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{body}</p>
+            </article>
+          ))}
+        </section>
+
+        <section className="mb-16 rounded-xl bg-secondary/50 p-6 sm:p-8">
+          <h2 className="text-xl font-semibold text-foreground">
+            The teacher decides. Always.
+          </h2>
+          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+            Nothing is auto-implemented. Every suggestion is editable, and you choose to implement,
+            modify, save or decline it. SameBasis is decision support for a qualified teacher — not
+            a diagnosis, not legal advice, and never a replacement for your professional judgement
+            or your school's learning support team.
+          </p>
+        </section>
+      </main>
+
+      <footer className="border-t border-border/70 px-4 py-6 sm:px-6">
+        <p className="mx-auto max-w-[1120px] text-center text-xs text-muted-foreground">
+          {footerText}
+        </p>
+      </footer>
+    </div>
   );
 }

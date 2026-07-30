@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import {
   LayoutDashboard,
@@ -12,14 +12,17 @@ import {
   Settings as SettingsIcon,
   Menu,
   Bell,
+  LogOut,
   X,
   HelpCircle,
 } from "lucide-react";
 import { brand, demoUser, footerText } from "@/lib/brand";
+import { useAppState } from "@/lib/app-state";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/classes", label: "My Classes", icon: Users },
   { to: "/students", label: "Student Profiles", icon: UserRound },
   { to: "/planner", label: "Lesson Planner", icon: Sparkles },
@@ -47,7 +50,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
           key={to}
           to={to}
           onClick={onNavigate}
-          activeOptions={{ exact: to === "/" }}
+          
           className="flex min-h-[44px] items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/85 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           activeProps={{
             className: "bg-sidebar-accent text-sidebar-accent-foreground",
@@ -66,7 +69,7 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col gap-6 p-4">
       <Link
-        to="/"
+        to="/dashboard"
         onClick={onNavigate}
         className="flex items-center gap-3 rounded-lg px-2 py-1.5"
       >
@@ -101,6 +104,22 @@ export function AppShell({
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [today, setToday] = useState("");
+  const { profile } = useAppState();
+  const navigate = useNavigate();
+
+  const initials =
+    (profile?.fullName ?? demoUser.fullName)
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() ?? "")
+      .join("") || demoUser.initials;
+
+  async function signOut() {
+    await supabase.auth.signOut();
+    await navigate({ to: "/auth", replace: true });
+  }
+
 
   useEffect(() => setMobileOpen(false), [pathname]);
   useEffect(() => {
@@ -151,10 +170,10 @@ export function AppShell({
             </button>
             <div className="min-w-0 flex-1">
               <p className="truncate text-sm font-medium text-foreground">
-                {demoUser.schoolName}
+                {profile?.schoolName ?? demoUser.schoolName}
               </p>
               <p className="truncate text-xs text-muted-foreground">
-                {today || "\u00a0"} · {demoUser.state}
+                {today || "\u00a0"} · {profile?.state ?? demoUser.state}
               </p>
             </div>
             <button
@@ -166,12 +185,21 @@ export function AppShell({
             </button>
             <div className="flex items-center gap-2 rounded-full bg-card px-2 py-1.5 shadow-warm-sm">
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
-                {demoUser.initials}
+                {initials}
               </span>
               <span className="hidden pr-1 text-sm font-medium sm:block">
-                {demoUser.fullName}
+                {profile?.fullName ?? demoUser.fullName}
               </span>
             </div>
+            <button
+              onClick={signOut}
+              aria-label="Sign out"
+              title="Sign out"
+              className="flex h-11 w-11 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <LogOut size={20} aria-hidden="true" />
+            </button>
+
           </div>
         </header>
 
@@ -204,7 +232,7 @@ export function AppShell({
             <li key={to} className="flex-1">
               <Link
                 to={to}
-                activeOptions={{ exact: to === "/" }}
+                
                 className="flex min-h-[56px] flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-medium text-muted-foreground"
                 activeProps={{ className: "text-primary", "aria-current": "page" }}
               >
