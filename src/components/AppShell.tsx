@@ -104,6 +104,22 @@ export function AppShell({
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [today, setToday] = useState("");
+  const { profile } = useAppState();
+  const navigate = useNavigate();
+
+  const initials =
+    (profile?.fullName ?? demoUser.fullName)
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase() ?? "")
+      .join("") || demoUser.initials;
+
+  async function signOut() {
+    await supabase.auth.signOut();
+    await navigate({ to: "/auth", replace: true });
+  }
+
 
   useEffect(() => setMobileOpen(false), [pathname]);
   useEffect(() => {
