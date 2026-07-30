@@ -1,107 +1,180 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import type { ReactNode } from "react";
 import {
-  demoClasses,
-  demoStudents,
-  demoTopics,
-  type AdjustmentRecord,
-  type EvidenceLog,
-  type Student,
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import type { ReactNode } from "react";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import type {
+  AdjustmentRecord,
+  ClassRecord,
+  CurriculumTopic,
+  EvidenceLog,
+  Student,
 } from "./demo-data";
+import { TERM_START, newId, weekNumberFor } from "./term";
+import {
+  loadWorkspace,
+  resetWorkspace,
+  saveAdjustment,
+  saveEvidenceLog,
+  updateProfile,
+} from "./workspace.functions";
+import type { TeacherProfile } from "./workspace-types";
 
-const STORAGE_KEY = "samebasis.demo.v1";
+export { TERM_START, newId, weekNumberFor };
 
-interface PersistedState {
+interface AppState {
+  profile: TeacherProfile | null;
+  classes: ClassRecord[];
+  students: Student[];
+  topics: CurriculumTopic[];
   adjustments: AdjustmentRecord[];
   evidenceLogs: EvidenceLog[];
-}
-
-interface AppState extends PersistedState {
-  classes: typeof demoClasses;
-  students: Student[];
-  topics: typeof demoTopics;
   hydrated: boolean;
+  loading: boolean;
   addAdjustment: (record: AdjustmentRecord) => void;
   updateAdjustment: (id: string, patch: Partial<AdjustmentRecord>) => void;
   addEvidenceLog: (log: EvidenceLog) => void;
-  resetDemo: () => void;
+  saveProfile: (patch: Omit<TeacherProfile, "id">) => Promise<void>;
+  resetDemo: () => Promise<void>;
+  refresh: () => Promise<void>;
 }
 
 const AppStateContext = createContext<AppState | null>(null);
 
-export const TERM_START = new Date(2026, 6, 13); // Monday 13 July 2026
-
-export function weekNumberFor(date: Date): number {
-  const days = Math.floor((date.getTime() - TERM_START.getTime()) / 86_400_000);
-  return Math.min(10, Math.max(1, Math.floor(days / 7) + 1));
-}
-
-export function newId(prefix: string): string {
-  return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
+function reportFailure(error: unknown) {
+  console.error(error);
+  toast.error("We couldn't save that just now. Your change is still on screen — try again.");
 }
 
 export function AppStateProvider({ children }: { children: ReactNode }) {
+  const [profile, setProfile] = useState<TeacherProfile | null>(null);
+  const [classes, setClasses] = useState<ClassRecord[]>([]);
+  const [students, setStudents] = useState<Student[]>([]);
+  const [topics, setTopics] = useState<CurriculumTopic[]>([]);
   const [adjustments, setAdjustments] = useState<AdjustmentRecord[]>([]);
   const [evidenceLogs, setEvidenceLogs] = useState<EvidenceLog[]>([]);
   const [hydrated, setHydrated] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  const applyPayload = useCallback(
+    (payload: Awaited<ReturnType<typeof loadWorkspace>>) => {
+      setProfile(payload.profile);
+      setClasses(payload.classes);
+      setStudents(payload.students);
+      setTopics(payload.topics);
+      setAdjustments(payload.adjustments);
+      setEvidenceLogs(payload.evidenceLogs);
+    },
+    [],
+  );
+
+  const refresh = useCallback(async () => {
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) {
+      setProfile(null);
+      setClasses([]);
+      setStudents([]);
+      setTopics([]);
+      setAdjustments([]);
+      setEvidenceLogs([]);
+      setHydrated(true);
+      return;
+    }
+    setLoading(true);
+    try {
+      applyPayload(await loadWorkspace());
+    } catch (error) {
+      console.error(error);
+      toast.error("We couldn't load your classroom. Please refresh the page.");
+    } finally {
+      setLoading(false);
+      setHydrated(true);
+    }
+  }, [applyPayload]);
 
   useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as PersistedState;
-        setAdjustments(parsed.adjustments ?? []);
-        setEvidenceLogs(parsed.evidenceLogs ?? []);
+    void refresh();
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
+        void refresh();
       }
-    } catch {
-      /* demo data is disposable — ignore corrupt storage */
-    }
-    setHydrated(true);
-  }, []);
-
-  useEffect(() => {
-    if (!hydrated) return;
-    try {
-      window.localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ adjustments, evidenceLogs } satisfies PersistedState),
-      );
-    } catch {
-      /* storage full or unavailable — the demo still works in memory */
-    }
-  }, [adjustments, evidenceLogs, hydrated]);
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [refresh]);
 
   const addAdjustment = useCallback((record: AdjustmentRecord) => {
     setAdjustments((prev) => [record, ...prev]);
+    void saveAdjustment({ data: record }).catch(reportFailure);
   }, []);
 
   const updateAdjustment = useCallback((id: string, patch: Partial<AdjustmentRecord>) => {
-    setAdjustments((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a)));
+    setAdjustments((prev) => {
+      const next = prev.map((a) => (a.id === id ? { ...a, ...patch } : a));
+      const updated = next.find((a) => a.id === id);
+      if (updated) void saveAdjustment({ data: updated }).catch(reportFailure);
+      return next;
+    });
   }, []);
 
   const addEvidenceLog = useCallback((log: EvidenceLog) => {
     setEvidenceLogs((prev) => [log, ...prev]);
+    void saveEvidenceLog({ data: log }).catch(reportFailure);
   }, []);
 
-  const resetDemo = useCallback(() => {
-    setAdjustments([]);
-    setEvidenceLogs([]);
+  const saveProfile = useCallback(async (patch: Omit<TeacherProfile, "id">) => {
+    setProfile((prev) => (prev ? { ...prev, ...patch } : prev));
+    await updateProfile({ data: patch });
   }, []);
+
+  const resetDemo = useCallback(async () => {
+    setLoading(true);
+    try {
+      await resetWorkspace();
+      applyPayload(await loadWorkspace());
+    } finally {
+      setLoading(false);
+    }
+  }, [applyPayload]);
 
   const value = useMemo<AppState>(
     () => ({
-      classes: demoClasses,
-      students: demoStudents,
-      topics: demoTopics,
+      profile,
+      classes,
+      students,
+      topics,
       adjustments,
       evidenceLogs,
       hydrated,
+      loading,
       addAdjustment,
       updateAdjustment,
       addEvidenceLog,
+      saveProfile,
       resetDemo,
+      refresh,
     }),
-    [adjustments, evidenceLogs, hydrated, addAdjustment, updateAdjustment, addEvidenceLog, resetDemo],
+    [
+      profile,
+      classes,
+      students,
+      topics,
+      adjustments,
+      evidenceLogs,
+      hydrated,
+      loading,
+      addAdjustment,
+      updateAdjustment,
+      addEvidenceLog,
+      saveProfile,
+      resetDemo,
+      refresh,
+    ],
   );
 
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>;
