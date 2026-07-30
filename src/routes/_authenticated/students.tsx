@@ -6,7 +6,7 @@ import { StudentCard } from "@/components/StudentCard";
 import { StudentDrawer } from "@/components/StudentDrawer";
 import type { Student } from "@/lib/demo-data";
 
-export const Route = createFileRoute("/students")({
+export const Route = createFileRoute("/_authenticated/students")({
   head: () => ({
     meta: [
       { title: "Student Profiles — SameBasis" },

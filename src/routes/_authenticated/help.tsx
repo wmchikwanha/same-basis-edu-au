@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 
-export const Route = createFileRoute("/help")({
+export const Route = createFileRoute("/_authenticated/help")({
   head: () => ({
     meta: [
       { title: "Help & Info — How SameBasis Works" },

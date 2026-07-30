@@ -5,7 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { useAppState } from "@/lib/app-state";
 import { demoUser } from "@/lib/brand";
 
-export const Route = createFileRoute("/settings")({
+export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({
     meta: [
       { title: "Settings — SameBasis Demo" },

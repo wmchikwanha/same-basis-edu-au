@@ -4,7 +4,7 @@ import { AppShell } from "@/components/AppShell";
 import { useAppState } from "@/lib/app-state";
 import { NccdLevelBadge } from "@/components/Badges";
 
-export const Route = createFileRoute("/classes/")({
+export const Route = createFileRoute("/_authenticated/classes/")({
   head: () => ({
     meta: [
       { title: "My Classes — SameBasis" },

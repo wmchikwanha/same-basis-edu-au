@@ -16,7 +16,7 @@ import { StudentAvatar } from "@/components/StudentAvatar";
 import { NccdLevelBadge, PillarBadge } from "@/components/Badges";
 import type { NccdPillar } from "@/lib/demo-data";
 
-export const Route = createFileRoute("/evidence")({
+export const Route = createFileRoute("/_authenticated/evidence")({
   head: () => ({
     meta: [
       { title: "Evidence Log — NCCD Tracking | SameBasis" },

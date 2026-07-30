@@ -21,7 +21,7 @@ import type { FamilyMessage } from "@/lib/ai-schemas";
 import { isCald } from "@/lib/demo-data";
 import { demoUser } from "@/lib/brand";
 
-export const Route = createFileRoute("/family")({
+export const Route = createFileRoute("/_authenticated/family")({
   validateSearch: (search: Record<string, unknown>) => ({
     student: typeof search.student === "string" ? search.student : undefined,
   }),
