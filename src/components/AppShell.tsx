@@ -12,14 +12,17 @@ import {
   Settings as SettingsIcon,
   Menu,
   Bell,
+  LogOut,
   X,
   HelpCircle,
 } from "lucide-react";
 import { brand, demoUser, footerText } from "@/lib/brand";
+import { useAppState } from "@/lib/app-state";
+import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
 const navItems = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { to: "/classes", label: "My Classes", icon: Users },
   { to: "/students", label: "Student Profiles", icon: UserRound },
   { to: "/planner", label: "Lesson Planner", icon: Sparkles },
@@ -47,7 +50,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
           key={to}
           to={to}
           onClick={onNavigate}
-          activeOptions={{ exact: to === "/" }}
+          
           className="flex min-h-[44px] items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/85 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           activeProps={{
             className: "bg-sidebar-accent text-sidebar-accent-foreground",
@@ -66,7 +69,7 @@ function SidebarBody({ onNavigate }: { onNavigate?: () => void }) {
   return (
     <div className="flex h-full flex-col gap-6 p-4">
       <Link
-        to="/"
+        to="/dashboard"
         onClick={onNavigate}
         className="flex items-center gap-3 rounded-lg px-2 py-1.5"
       >
@@ -204,7 +207,7 @@ export function AppShell({
             <li key={to} className="flex-1">
               <Link
                 to={to}
-                activeOptions={{ exact: to === "/" }}
+                
                 className="flex min-h-[56px] flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-medium text-muted-foreground"
                 activeProps={{ className: "text-primary", "aria-current": "page" }}
               >
