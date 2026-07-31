@@ -88,6 +88,10 @@ function AuthPage() {
   }
 
   async function onGoogle() {
+    if (mode === "signup" && !aiConsent) {
+      toast.error("Please confirm the AI processing consent first.");
+      return;
+    }
     setBusy(true);
     const result = await lovable.auth.signInWithOAuth("google", {
       redirect_uri: window.location.origin,
@@ -231,7 +235,7 @@ function AuthPage() {
           <button
             type="button"
             onClick={onGoogle}
-            disabled={busy}
+            disabled={busy || (mode === "signup" && !aiConsent)}
             className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg border border-input bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-70"
           >
             Continue with Google
