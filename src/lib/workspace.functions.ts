@@ -73,25 +73,44 @@ export const updateProfile = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z
       .object({
-        fullName: z.string().min(1).max(80),
-        schoolName: z.string().min(1).max(120),
-        state: z.string().min(1).max(20),
-        role: z.string().min(1).max(60),
+        fullName: z.string().min(1).max(80).optional(),
+        schoolName: z.string().min(1).max(120).optional(),
+        state: z.string().min(1).max(20).optional(),
+        role: z.string().min(1).max(60).optional(),
+        yearLevel: z.number().int().min(1).max(12).optional(),
+        assessmentContext: z.string().max(600).optional(),
+        aiConsent: z.boolean().optional(),
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const { error } = await context.supabase
+    const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    if (data.fullName !== undefined) patch.full_name = data.fullName;
+    if (data.schoolName !== undefined) patch.school_name = data.schoolName;
+    if (data.state !== undefined) patch.state = data.state;
+    if (data.role !== undefined) patch.role = data.role;
+    if (data.yearLevel !== undefined) patch.year_level = data.yearLevel;
+    if (data.assessmentContext !== undefined) patch.assessment_context = data.assessmentContext;
+    if (data.aiConsent !== undefined) {
+      patch.ai_consent = data.aiConsent;
+      patch.ai_consent_at = data.aiConsent ? new Date().toISOString() : null;
+    }
+
+    const { data: updated, error } = await context.supabase
       .from("profiles")
-      .update({
-        full_name: data.fullName,
-        school_name: data.schoolName,
-        state: data.state,
-        role: data.role,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", context.userId);
+      .update(patch)
+      .eq("id", context.userId)
+      .select()
+      .maybeSingle();
     if (error) throw new Error(error.message);
+
+    if (!updated) {
+      const email = (context.claims.email as string | undefined) ?? "";
+      const { error: insertError } = await context.supabase
+        .from("profiles")
+        .insert({ id: context.userId, full_name: email ? email.split("@")[0] : "Teacher", ...patch });
+      if (insertError) throw new Error(insertError.message);
+    }
     return { ok: true as const };
   });
 
