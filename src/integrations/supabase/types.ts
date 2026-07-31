@@ -215,6 +215,9 @@ export type Database = {
       }
       profiles: {
         Row: {
+          ai_consent: boolean
+          ai_consent_at: string | null
+          assessment_context: string
           created_at: string
           full_name: string
           id: string
@@ -222,8 +225,12 @@ export type Database = {
           school_name: string
           state: string
           updated_at: string
+          year_level: number
         }
         Insert: {
+          ai_consent?: boolean
+          ai_consent_at?: string | null
+          assessment_context?: string
           created_at?: string
           full_name?: string
           id: string
@@ -231,8 +238,12 @@ export type Database = {
           school_name?: string
           state?: string
           updated_at?: string
+          year_level?: number
         }
         Update: {
+          ai_consent?: boolean
+          ai_consent_at?: string | null
+          assessment_context?: string
           created_at?: string
           full_name?: string
           id?: string
@@ -240,6 +251,7 @@ export type Database = {
           school_name?: string
           state?: string
           updated_at?: string
+          year_level?: number
         }
         Relationships: []
       }
