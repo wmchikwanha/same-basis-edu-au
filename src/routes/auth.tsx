@@ -5,7 +5,7 @@ import { Info, Loader2, ShieldCheck, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { brand, footerText } from "@/lib/brand";
-import { updateProfile } from "@/lib/workspace.functions";
+import { PENDING_AI_CONSENT_KEY } from "@/lib/app-state";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -67,7 +67,7 @@ function AuthPage() {
           password,
         });
         if (signInError) throw signInError;
-        await updateProfile({ data: { aiConsent: true } }).catch(() => undefined);
+        sessionStorage.setItem(PENDING_AI_CONSENT_KEY, "1");
         toast.success("Account created. Setting up your classroom…");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });

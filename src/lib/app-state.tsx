@@ -28,6 +28,8 @@ import type { TeacherProfile } from "./workspace-types";
 
 export { TERM_START, newId, weekNumberFor };
 
+export const PENDING_AI_CONSENT_KEY = "samebasis.pendingAiConsent";
+
 interface AppState {
   profile: TeacherProfile | null;
   classes: ClassRecord[];
@@ -88,7 +90,21 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     }
     setLoading(true);
     try {
-      applyPayload(await loadWorkspace());
+      const payload = await loadWorkspace();
+      if (
+        typeof sessionStorage !== "undefined" &&
+        sessionStorage.getItem(PENDING_AI_CONSENT_KEY) &&
+        !payload.profile.aiConsent
+      ) {
+        sessionStorage.removeItem(PENDING_AI_CONSENT_KEY);
+        await updateProfile({ data: { aiConsent: true } }).catch(console.error);
+        payload.profile = {
+          ...payload.profile,
+          aiConsent: true,
+          aiConsentAt: new Date().toISOString(),
+        };
+      }
+      applyPayload(payload);
     } catch (error) {
       console.error(error);
       toast.error("We couldn't load your classroom. Please refresh the page.");
