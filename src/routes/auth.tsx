@@ -1,10 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Info, Loader2, ShieldCheck } from "lucide-react";
+import { Info, Loader2, ShieldCheck, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable/index";
 import { brand, footerText } from "@/lib/brand";
+import { updateProfile } from "@/lib/workspace.functions";
 
 export const Route = createFileRoute("/auth")({
   head: () => ({
@@ -35,6 +36,7 @@ function AuthPage() {
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [busy, setBusy] = useState(false);
+  const [aiConsent, setAiConsent] = useState(false);
 
   useEffect(() => {
     void supabase.auth.getSession().then(({ data }) => {
@@ -47,6 +49,10 @@ function AuthPage() {
     setBusy(true);
     try {
       if (mode === "signup") {
+        if (!aiConsent) {
+          toast.error("Please confirm the AI processing consent to create an account.");
+          return;
+        }
         const { error } = await supabase.auth.signUp({
           email,
           password,
@@ -61,6 +67,7 @@ function AuthPage() {
           password,
         });
         if (signInError) throw signInError;
+        await updateProfile({ data: { aiConsent: true } }).catch(() => undefined);
         toast.success("Account created. Setting up your classroom…");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -175,10 +182,40 @@ function AuthPage() {
                 className="min-h-[44px] rounded-lg border border-input bg-background px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
               />
             </div>
+            {mode === "signup" && (
+              <div className="rounded-lg border border-border bg-secondary/40 p-3 text-xs leading-relaxed text-foreground">
+                <p className="mb-2 flex items-center gap-2 text-sm font-semibold">
+                  <Sparkles size={15} className="text-primary" aria-hidden="true" />
+                  AI processing consent
+                </p>
+                <p>
+                  SameBasis sends student context to an AI model{" "}
+                  <strong>only when you press Generate</strong> in the Lesson Planner, Crisis
+                  Guidance or Family Messages — never in the background. Suggestions are drafts,
+                  not professional judgements: they can be generic or wrong, so review, edit or
+                  decline each one. Nothing becomes NCCD evidence until you implement it. Full
+                  limitations are in Help &amp; Info, and you can withdraw consent any time in
+                  Settings.
+                </p>
+                <label className="mt-3 flex items-start gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={aiConsent}
+                    onChange={(e) => setAiConsent(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 shrink-0 accent-[hsl(var(--primary))]"
+                  />
+                  <span>
+                    I understand how AI is used and consent to AI processing of the synthetic
+                    student context I enter.
+                  </span>
+                </label>
+              </div>
+            )}
+
             <button
               type="submit"
-              disabled={busy}
-              className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-light disabled:opacity-70"
+              disabled={busy || (mode === "signup" && !aiConsent)}
+              className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-light disabled:opacity-60"
             >
               {busy && <Loader2 size={16} className="animate-spin" aria-hidden="true" />}
               {mode === "signup" ? "Create account and start" : "Sign in"}
