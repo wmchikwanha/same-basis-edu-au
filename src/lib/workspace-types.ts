@@ -4,4 +4,8 @@ export interface TeacherProfile {
   schoolName: string;
   state: string;
   role: string;
+  yearLevel: number;
+  assessmentContext: string;
+  aiConsent: boolean;
+  aiConsentAt: string | null;
 }

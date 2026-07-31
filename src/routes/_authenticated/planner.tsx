@@ -70,8 +70,17 @@ function StepHeading({ step, title, hint }: { step: number; title: string; hint?
 }
 
 function Planner() {
-  const { classes, students, topics, addAdjustment, addEvidenceLog, updateAdjustment, adjustments } =
-    useAppState();
+  const {
+    profile,
+    classes,
+    students,
+    topics,
+    addAdjustment,
+    addEvidenceLog,
+    updateAdjustment,
+    adjustments,
+  } = useAppState();
+  const assessmentContext = profile?.assessmentContext?.trim() ?? "";
   const runGenerate = useServerFn(generateAdjustment);
 
   const [classId, setClassId] = useState(classes[0]?.id ?? "");
@@ -80,7 +89,7 @@ function Planner() {
   const roster = students.filter((s) => s.classId === classId);
   const [selectedIds, setSelectedIds] = useState<string[]>(roster.map((s) => s.id));
 
-  const [busyStudent, setBusyStudent] = useState<string | null>(null);
+  const [doneCount, setDoneCount] = useState(0);
   const [generating, setGenerating] = useState(false);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -102,54 +111,76 @@ function Planner() {
     setError(null);
     setDrafts([]);
     setHandled({});
+    setDoneCount(0);
 
-    const results: Draft[] = [];
-    for (const id of selectedIds) {
-      const student = students.find((s) => s.id === id);
-      if (!student) continue;
-      setBusyStudent(student.preferredName);
-      const p = student.profile;
-      const res = await runGenerate({
-        data: {
-          studentName: student.preferredName,
-          yearLevel: klass.yearLevel,
-          nccdCategory: p.nccdCategory,
-          nccdLevel: p.nccdLevel,
-          functionalDescription: p.primaryDiagnosis
-            ? `${p.primaryDiagnosis}. ${p.functionalDescription}`
-            : p.functionalDescription,
-          culturalBackground: p.culturalBackground,
-          languagesSpoken: p.languagesSpoken,
-          ealdLevel: p.ealdLevel,
-          traumaFlags: p.traumaFlags,
-          knownTriggers: p.knownTriggers,
-          calmingStrategies: p.calmingStrategies,
-          strengths: p.strengths,
-          iepGoals: p.iepGoals,
-          subject: klass.subject,
-          topic: topic.topic,
-          topicDescription: topic.description,
-          activityDescription: activity,
-        },
-      });
+    const queue = selectedIds
+      .map((id) => students.find((s) => s.id === id))
+      .filter((s): s is Student => Boolean(s));
 
-      if (!res.ok) {
-        setError(res.error);
-        break;
+    const collected: Draft[] = [];
+    let failure: string | null = null;
+    let cursor = 0;
+
+    const worker = async () => {
+      while (cursor < queue.length && !failure) {
+        const student = queue[cursor++];
+        const p = student.profile;
+        const res = await runGenerate({
+          data: {
+            studentName: student.preferredName,
+            yearLevel: profile?.yearLevel ?? klass.yearLevel,
+            nccdCategory: p.nccdCategory,
+            nccdLevel: p.nccdLevel,
+            functionalDescription: p.primaryDiagnosis
+              ? `${p.primaryDiagnosis}. ${p.functionalDescription}`
+              : p.functionalDescription,
+            culturalBackground: p.culturalBackground,
+            languagesSpoken: p.languagesSpoken,
+            ealdLevel: p.ealdLevel,
+            traumaFlags: p.traumaFlags,
+            knownTriggers: p.knownTriggers,
+            calmingStrategies: p.calmingStrategies,
+            strengths: p.strengths,
+            iepGoals: p.iepGoals,
+            subject: klass.subject,
+            topic: topic.topic,
+            topicDescription: topic.description,
+            activityDescription: assessmentContext
+              ? `${activity}${activity ? ". " : ""}Assessment context: ${assessmentContext}`
+              : activity,
+          },
+        }).catch((err: unknown) => ({
+          ok: false as const,
+          error: err instanceof Error ? err.message : "Generation failed.",
+        }));
+
+        if (!res.ok) {
+          failure = res.error;
+          return;
+        }
+
+        collected.push({
+          studentId: student.id,
+          adjustment: res.result.adjustment,
+          udlBenefit: res.result.udl_benefit,
+          culturalNote: res.result.cultural_note,
+          traumaNote: res.result.trauma_note,
+          rationale: res.result.rationale,
+        });
+        const order = new Map(selectedIds.map((id, i) => [id, i]));
+        setDrafts(
+          [...collected].sort(
+            (a, b) => (order.get(a.studentId) ?? 0) - (order.get(b.studentId) ?? 0),
+          ),
+        );
+        setDoneCount(collected.length);
       }
+    };
 
-      results.push({
-        studentId: student.id,
-        adjustment: res.result.adjustment,
-        udlBenefit: res.result.udl_benefit,
-        culturalNote: res.result.cultural_note,
-        traumaNote: res.result.trauma_note,
-        rationale: res.result.rationale,
-      });
-      setDrafts([...results]);
-    }
+    const lanes = Math.min(3, queue.length);
+    await Promise.all(Array.from({ length: lanes }, worker));
 
-    setBusyStudent(null);
+    if (failure) setError(failure);
     setGenerating(false);
   }
 
@@ -311,11 +342,11 @@ function Planner() {
           </div>
         </section>
 
-        <section className="rounded-xl bg-card p-6 shadow-warm-sm">
+        <section className="rounded-xl bg-card p-6 shadow-warm-sm" data-tour="planner-generate">
           <StepHeading
             step={3}
             title="Generate"
-            hint="Each adjustment is written for this student, in this lesson, on this topic."
+            hint="Each adjustment is written for this student, in this lesson, on this topic. All selected students are generated at once."
           />
           <button
             onClick={handleGenerate}
@@ -332,11 +363,23 @@ function Planner() {
               : `Generate adjustments for ${selectedIds.length} ${selectedIds.length === 1 ? "student" : "students"}`}
           </button>
 
-          {generating && busyStudent && (
-            <p aria-live="polite" className="mt-4 text-sm text-muted-foreground">
-              Consulting the evidence base for {busyStudent}…
-            </p>
+          {generating && (
+            <div className="mt-4">
+              <p aria-live="polite" className="text-sm text-muted-foreground">
+                Working through {selectedIds.length} students in parallel — {doneCount} of{" "}
+                {selectedIds.length} ready.
+              </p>
+              <div className="mt-2 h-1.5 w-full max-w-sm overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-primary transition-all"
+                  style={{
+                    width: `${Math.round((doneCount / Math.max(selectedIds.length, 1)) * 100)}%`,
+                  }}
+                />
+              </div>
+            </div>
           )}
+
 
           {error && (
             <p

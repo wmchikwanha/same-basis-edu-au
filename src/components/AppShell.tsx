@@ -20,6 +20,7 @@ import { brand, demoUser, footerText } from "@/lib/brand";
 import { useAppState } from "@/lib/app-state";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { GuidedTour } from "@/components/GuidedTour";
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -50,7 +51,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
           key={to}
           to={to}
           onClick={onNavigate}
-          
+          data-tour={`nav-${to}`}
           className="flex min-h-[44px] items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/85 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           activeProps={{
             className: "bg-sidebar-accent text-sidebar-accent-foreground",
@@ -134,6 +135,7 @@ export function AppShell({
 
   return (
     <div className="flex min-h-screen bg-background">
+      <GuidedTour />
       <aside className="sticky top-0 hidden h-screen w-64 shrink-0 bg-sidebar lg:block">
         <SidebarBody />
       </aside>

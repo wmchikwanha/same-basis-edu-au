@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import type { ReactNode } from "react";
@@ -28,6 +29,8 @@ import type { TeacherProfile } from "./workspace-types";
 
 export { TERM_START, newId, weekNumberFor };
 
+export const PENDING_AI_CONSENT_KEY = "samebasis.pendingAiConsent";
+
 interface AppState {
   profile: TeacherProfile | null;
   classes: ClassRecord[];
@@ -40,7 +43,7 @@ interface AppState {
   addAdjustment: (record: AdjustmentRecord) => void;
   updateAdjustment: (id: string, patch: Partial<AdjustmentRecord>) => void;
   addEvidenceLog: (log: EvidenceLog) => void;
-  saveProfile: (patch: Omit<TeacherProfile, "id">) => Promise<void>;
+  saveProfile: (patch: Partial<Omit<TeacherProfile, "id" | "aiConsentAt">>) => Promise<void>;
   resetDemo: () => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -61,6 +64,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [evidenceLogs, setEvidenceLogs] = useState<EvidenceLog[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [loading, setLoading] = useState(false);
+  const inFlight = useRef<Promise<void> | null>(null);
 
   const applyPayload = useCallback(
     (payload: Awaited<ReturnType<typeof loadWorkspace>>) => {
@@ -74,7 +78,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const refresh = useCallback(async () => {
+  const runRefresh = useCallback(async () => {
     const { data } = await supabase.auth.getSession();
     if (!data.session) {
       setProfile(null);
@@ -88,7 +92,21 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     }
     setLoading(true);
     try {
-      applyPayload(await loadWorkspace());
+      const payload = await loadWorkspace();
+      if (
+        typeof sessionStorage !== "undefined" &&
+        sessionStorage.getItem(PENDING_AI_CONSENT_KEY) &&
+        !payload.profile.aiConsent
+      ) {
+        sessionStorage.removeItem(PENDING_AI_CONSENT_KEY);
+        await updateProfile({ data: { aiConsent: true } }).catch(console.error);
+        payload.profile = {
+          ...payload.profile,
+          aiConsent: true,
+          aiConsentAt: new Date().toISOString(),
+        };
+      }
+      applyPayload(payload);
     } catch (error) {
       console.error(error);
       toast.error("We couldn't load your classroom. Please refresh the page.");
@@ -97,6 +115,15 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setHydrated(true);
     }
   }, [applyPayload]);
+
+  const refresh = useCallback(async () => {
+    if (inFlight.current) return inFlight.current;
+    const promise = runRefresh().finally(() => {
+      inFlight.current = null;
+    });
+    inFlight.current = promise;
+    return promise;
+  }, [runRefresh]);
 
   useEffect(() => {
     void refresh();
@@ -127,10 +154,26 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     void saveEvidenceLog({ data: log }).catch(reportFailure);
   }, []);
 
-  const saveProfile = useCallback(async (patch: Omit<TeacherProfile, "id">) => {
-    setProfile((prev) => (prev ? { ...prev, ...patch } : prev));
-    await updateProfile({ data: patch });
-  }, []);
+  const saveProfile = useCallback(
+    async (patch: Partial<Omit<TeacherProfile, "id" | "aiConsentAt">>) => {
+      setProfile((prev) =>
+        prev
+          ? {
+              ...prev,
+              ...patch,
+              aiConsentAt:
+                patch.aiConsent === undefined
+                  ? prev.aiConsentAt
+                  : patch.aiConsent
+                    ? new Date().toISOString()
+                    : null,
+            }
+          : prev,
+      );
+      await updateProfile({ data: patch });
+    },
+    [],
+  );
 
   const resetDemo = useCallback(async () => {
     setLoading(true);

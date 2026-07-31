@@ -348,34 +348,36 @@ async function seedWorkspace(supabase: DB, userId: string): Promise<void> {
 
 /* ---------------------------------------------------------------- loading */
 
+export function mapProfile(
+  row: Database["public"]["Tables"]["profiles"]["Row"],
+): TeacherProfile {
+  return {
+    id: row.id,
+    fullName: row.full_name,
+    schoolName: row.school_name,
+    state: row.state,
+    role: row.role,
+    yearLevel: row.year_level,
+    assessmentContext: row.assessment_context,
+    aiConsent: row.ai_consent,
+    aiConsentAt: row.ai_consent_at,
+  };
+}
+
 async function ensureProfile(
   supabase: DB,
   userId: string,
   fallbackName: string,
 ): Promise<TeacherProfile> {
   const { data } = await supabase.from("profiles").select("*").eq("id", userId).maybeSingle();
-  if (data) {
-    return {
-      id: data.id,
-      fullName: data.full_name,
-      schoolName: data.school_name,
-      state: data.state,
-      role: data.role,
-    };
-  }
+  if (data) return mapProfile(data);
   const { data: created, error } = await supabase
     .from("profiles")
     .insert({ id: userId, full_name: fallbackName })
     .select()
     .single();
   if (error || !created) throw error ?? new Error("Could not create your profile");
-  return {
-    id: created.id,
-    fullName: created.full_name,
-    schoolName: created.school_name,
-    state: created.state,
-    role: created.role,
-  };
+  return mapProfile(created);
 }
 
 export async function loadWorkspaceForUser(
