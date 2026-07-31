@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import type { ReactNode } from "react";
@@ -63,6 +64,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [evidenceLogs, setEvidenceLogs] = useState<EvidenceLog[]>([]);
   const [hydrated, setHydrated] = useState(false);
   const [loading, setLoading] = useState(false);
+  const inFlight = useRef<Promise<void> | null>(null);
 
   const applyPayload = useCallback(
     (payload: Awaited<ReturnType<typeof loadWorkspace>>) => {
@@ -76,7 +78,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     [],
   );
 
-  const refresh = useCallback(async () => {
+  const runRefresh = useCallback(async () => {
     const { data } = await supabase.auth.getSession();
     if (!data.session) {
       setProfile(null);
@@ -113,6 +115,15 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setHydrated(true);
     }
   }, [applyPayload]);
+
+  const refresh = useCallback(async () => {
+    if (inFlight.current) return inFlight.current;
+    const promise = runRefresh().finally(() => {
+      inFlight.current = null;
+    });
+    inFlight.current = promise;
+    return promise;
+  }, [runRefresh]);
 
   useEffect(() => {
     void refresh();
