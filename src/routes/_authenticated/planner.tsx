@@ -342,11 +342,11 @@ function Planner() {
           </div>
         </section>
 
-        <section className="rounded-xl bg-card p-6 shadow-warm-sm">
+        <section className="rounded-xl bg-card p-6 shadow-warm-sm" data-tour="planner-generate">
           <StepHeading
             step={3}
             title="Generate"
-            hint="Each adjustment is written for this student, in this lesson, on this topic."
+            hint="Each adjustment is written for this student, in this lesson, on this topic. All selected students are generated at once."
           />
           <button
             onClick={handleGenerate}
@@ -363,11 +363,23 @@ function Planner() {
               : `Generate adjustments for ${selectedIds.length} ${selectedIds.length === 1 ? "student" : "students"}`}
           </button>
 
-          {generating && busyStudent && (
-            <p aria-live="polite" className="mt-4 text-sm text-muted-foreground">
-              Consulting the evidence base for {busyStudent}…
-            </p>
+          {generating && (
+            <div className="mt-4">
+              <p aria-live="polite" className="text-sm text-muted-foreground">
+                Working through {selectedIds.length} students in parallel — {doneCount} of{" "}
+                {selectedIds.length} ready.
+              </p>
+              <div className="mt-2 h-1.5 w-full max-w-sm overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-primary transition-all"
+                  style={{
+                    width: `${Math.round((doneCount / Math.max(selectedIds.length, 1)) * 100)}%`,
+                  }}
+                />
+              </div>
+            </div>
           )}
+
 
           {error && (
             <p
