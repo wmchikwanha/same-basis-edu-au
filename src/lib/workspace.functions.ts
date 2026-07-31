@@ -8,6 +8,7 @@ import {
   resetWorkspaceForUser,
 } from "./workspace.server";
 import type { AdjustmentRecord, EvidenceLog } from "./demo-data";
+import type { Database } from "@/integrations/supabase/types";
 
 const AdjustmentSchema = z.object({
   id: z.string(),
@@ -84,7 +85,9 @@ export const updateProfile = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
-    const patch: Record<string, unknown> = { updated_at: new Date().toISOString() };
+    const patch: Database["public"]["Tables"]["profiles"]["Update"] = {
+      updated_at: new Date().toISOString(),
+    };
     if (data.fullName !== undefined) patch.full_name = data.fullName;
     if (data.schoolName !== undefined) patch.school_name = data.schoolName;
     if (data.state !== undefined) patch.state = data.state;
