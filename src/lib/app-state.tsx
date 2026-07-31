@@ -40,7 +40,7 @@ interface AppState {
   addAdjustment: (record: AdjustmentRecord) => void;
   updateAdjustment: (id: string, patch: Partial<AdjustmentRecord>) => void;
   addEvidenceLog: (log: EvidenceLog) => void;
-  saveProfile: (patch: Omit<TeacherProfile, "id">) => Promise<void>;
+  saveProfile: (patch: Partial<Omit<TeacherProfile, "id" | "aiConsentAt">>) => Promise<void>;
   resetDemo: () => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -127,10 +127,26 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     void saveEvidenceLog({ data: log }).catch(reportFailure);
   }, []);
 
-  const saveProfile = useCallback(async (patch: Omit<TeacherProfile, "id">) => {
-    setProfile((prev) => (prev ? { ...prev, ...patch } : prev));
-    await updateProfile({ data: patch });
-  }, []);
+  const saveProfile = useCallback(
+    async (patch: Partial<Omit<TeacherProfile, "id" | "aiConsentAt">>) => {
+      setProfile((prev) =>
+        prev
+          ? {
+              ...prev,
+              ...patch,
+              aiConsentAt:
+                patch.aiConsent === undefined
+                  ? prev.aiConsentAt
+                  : patch.aiConsent
+                    ? new Date().toISOString()
+                    : null,
+            }
+          : prev,
+      );
+      await updateProfile({ data: patch });
+    },
+    [],
+  );
 
   const resetDemo = useCallback(async () => {
     setLoading(true);
