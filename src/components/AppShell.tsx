@@ -15,6 +15,7 @@ import {
   LogOut,
   X,
   HelpCircle,
+  Upload,
 } from "lucide-react";
 import { brand, demoUser, footerText } from "@/lib/brand";
 import { useAppState } from "@/lib/app-state";
