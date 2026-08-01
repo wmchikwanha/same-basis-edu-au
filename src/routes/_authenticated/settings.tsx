@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { RotateCcw, User, School, Info, Save, Sparkles, Compass, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import { AuditTrail } from "@/components/AuditTrail";
 import { startGuidedTour } from "@/components/GuidedTour";
 import { useAppState } from "@/lib/app-state";
 
@@ -239,6 +240,8 @@ function SettingsPage() {
             </Link>
           </div>
         </section>
+
+        <AuditTrail />
 
         <section className="rounded-xl bg-card p-6 shadow-warm-sm">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">

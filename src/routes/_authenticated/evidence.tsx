@@ -12,6 +12,7 @@ import {
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { useAppState, weekNumberFor, newId } from "@/lib/app-state";
+import { recordActivity } from "@/lib/activity";
 import { StudentAvatar } from "@/components/StudentAvatar";
 import { NccdLevelBadge, PillarBadge } from "@/components/Badges";
 import type { NccdPillar } from "@/lib/demo-data";
@@ -101,6 +102,11 @@ function EvidencePage() {
     a.download = `samebasis-nccd-evidence-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+    recordActivity({
+      eventType: "exported",
+      surface: "evidence",
+      summary: `Exported ${filtered.length} evidence entries for the census pack.`,
+    });
   }
 
   function addManual() {

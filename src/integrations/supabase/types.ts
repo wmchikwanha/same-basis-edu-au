@@ -96,6 +96,60 @@ export type Database = {
           },
         ]
       }
+      ai_activity_events: {
+        Row: {
+          adjustment_id: string | null
+          created_at: string
+          duration_ms: number | null
+          event_type: string
+          id: string
+          student_id: string | null
+          success: boolean
+          summary: string
+          surface: string
+          user_id: string
+        }
+        Insert: {
+          adjustment_id?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          event_type?: string
+          id?: string
+          student_id?: string | null
+          success?: boolean
+          summary?: string
+          surface?: string
+          user_id: string
+        }
+        Update: {
+          adjustment_id?: string | null
+          created_at?: string
+          duration_ms?: number | null
+          event_type?: string
+          id?: string
+          student_id?: string | null
+          success?: boolean
+          summary?: string
+          surface?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ai_activity_events_adjustment_id_fkey"
+            columns: ["adjustment_id"]
+            isOneToOne: false
+            referencedRelation: "adjustments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ai_activity_events_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       classes: {
         Row: {
           created_at: string

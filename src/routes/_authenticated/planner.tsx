@@ -14,6 +14,9 @@ import {
   ShieldAlert,
   Users2,
   ArrowRight,
+  RefreshCw,
+  Undo2,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
@@ -21,6 +24,7 @@ import { StudentAvatar } from "@/components/StudentAvatar";
 import { AiBadge, CaldBadge, NccdLevelBadge, PillarBadge } from "@/components/Badges";
 import { useAppState, newId, weekNumberFor } from "@/lib/app-state";
 import { generateAdjustment } from "@/lib/adjustments.functions";
+import { recordActivity } from "@/lib/activity";
 import { isCald, type AdjustmentRecord, type Student } from "@/lib/demo-data";
 
 export const Route = createFileRoute("/_authenticated/planner")({
@@ -30,7 +34,7 @@ export const Route = createFileRoute("/_authenticated/planner")({
       {
         name: "description",
         content:
-          "Choose a class and curriculum topic and get specific, evidence-based reasonable adjustments for each student, auto-tagged for NCCD.",
+          "Choose a class and curriculum topic and get specific, evidence-based reasonable adjustments for each student, reviewed side-by-side before anything is saved.",
       },
       {
         property: "og:title",
@@ -39,21 +43,33 @@ export const Route = createFileRoute("/_authenticated/planner")({
       {
         property: "og:description",
         content:
-          "Choose a class and curriculum topic and get specific, evidence-based reasonable adjustments for each student, auto-tagged for NCCD.",
+          "Generate, review, edit or regenerate each student's adjustment side-by-side with the original AI output before it becomes NCCD evidence.",
       },
     ],
   }),
   component: Planner,
 });
 
-type Draft = {
-  studentId: string;
+type DraftBody = {
   adjustment: string;
   udlBenefit: string;
   culturalNote: string;
   traumaNote: string;
   rationale: string;
 };
+
+type Draft = {
+  studentId: string;
+  original: DraftBody;
+  current: DraftBody;
+  regenCount: number;
+};
+
+function isEdited(draft: Draft): boolean {
+  return (Object.keys(draft.original) as (keyof DraftBody)[]).some(
+    (key) => draft.original[key] !== draft.current[key],
+  );
+}
 
 function StepHeading({ step, title, hint }: { step: number; title: string; hint?: string }) {
   return (
@@ -70,16 +86,7 @@ function StepHeading({ step, title, hint }: { step: number; title: string; hint?
 }
 
 function Planner() {
-  const {
-    profile,
-    classes,
-    students,
-    topics,
-    addAdjustment,
-    addEvidenceLog,
-    updateAdjustment,
-    adjustments,
-  } = useAppState();
+  const { profile, classes, students, topics, addAdjustment, addEvidenceLog } = useAppState();
   const assessmentContext = profile?.assessmentContext?.trim() ?? "";
   const runGenerate = useServerFn(generateAdjustment);
 
@@ -93,6 +100,7 @@ function Planner() {
   const [generating, setGenerating] = useState(false);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
   const [handled, setHandled] = useState<Record<string, "implemented" | "declined" | "saved">>({});
   const [error, setError] = useState<string | null>(null);
 
@@ -100,9 +108,72 @@ function Planner() {
   const topic = topics.find((t) => t.id === topicId);
 
   function toggleStudent(id: string) {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-    );
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
+  async function generateFor(student: Student): Promise<DraftBody | { error: string }> {
+    if (!klass || !topic) return { error: "Select a class and topic first." };
+    const p = student.profile;
+    const started = performance.now();
+    const res = await runGenerate({
+      data: {
+        studentName: student.preferredName,
+        yearLevel: profile?.yearLevel ?? klass.yearLevel,
+        nccdCategory: p.nccdCategory,
+        nccdLevel: p.nccdLevel,
+        functionalDescription: p.primaryDiagnosis
+          ? `${p.primaryDiagnosis}. ${p.functionalDescription}`
+          : p.functionalDescription,
+        culturalBackground: p.culturalBackground,
+        languagesSpoken: p.languagesSpoken,
+        ealdLevel: p.ealdLevel,
+        traumaFlags: p.traumaFlags,
+        knownTriggers: p.knownTriggers,
+        calmingStrategies: p.calmingStrategies,
+        strengths: p.strengths,
+        iepGoals: p.iepGoals,
+        subject: klass.subject,
+        topic: topic.topic,
+        topicDescription: topic.description,
+        activityDescription: assessmentContext
+          ? `${activity}${activity ? ". " : ""}Assessment context: ${assessmentContext}`
+          : activity,
+      },
+    }).catch((err: unknown) => ({
+      ok: false as const,
+      error: err instanceof Error ? err.message : "Generation failed.",
+    }));
+
+    const durationMs = Math.round(performance.now() - started);
+
+    if (!res.ok) {
+      const timedOut = /timeout|timed out|504|aborted/i.test(res.error);
+      recordActivity({
+        eventType: timedOut ? "timeout" : "error",
+        surface: "planner",
+        studentId: student.id,
+        summary: `${student.preferredName}: ${res.error}`.slice(0, 500),
+        durationMs,
+        success: false,
+      });
+      return { error: res.error };
+    }
+
+    recordActivity({
+      eventType: "generated",
+      surface: "planner",
+      studentId: student.id,
+      summary: `${topic.topic} — adjustment generated for ${student.preferredName}.`,
+      durationMs,
+    });
+
+    return {
+      adjustment: res.result.adjustment,
+      udlBenefit: res.result.udl_benefit,
+      culturalNote: res.result.cultural_note,
+      traumaNote: res.result.trauma_note,
+      rationale: res.result.rationale,
+    };
   }
 
   async function handleGenerate() {
@@ -124,48 +195,16 @@ function Planner() {
     const worker = async () => {
       while (cursor < queue.length && !failure) {
         const student = queue[cursor++];
-        const p = student.profile;
-        const res = await runGenerate({
-          data: {
-            studentName: student.preferredName,
-            yearLevel: profile?.yearLevel ?? klass.yearLevel,
-            nccdCategory: p.nccdCategory,
-            nccdLevel: p.nccdLevel,
-            functionalDescription: p.primaryDiagnosis
-              ? `${p.primaryDiagnosis}. ${p.functionalDescription}`
-              : p.functionalDescription,
-            culturalBackground: p.culturalBackground,
-            languagesSpoken: p.languagesSpoken,
-            ealdLevel: p.ealdLevel,
-            traumaFlags: p.traumaFlags,
-            knownTriggers: p.knownTriggers,
-            calmingStrategies: p.calmingStrategies,
-            strengths: p.strengths,
-            iepGoals: p.iepGoals,
-            subject: klass.subject,
-            topic: topic.topic,
-            topicDescription: topic.description,
-            activityDescription: assessmentContext
-              ? `${activity}${activity ? ". " : ""}Assessment context: ${assessmentContext}`
-              : activity,
-          },
-        }).catch((err: unknown) => ({
-          ok: false as const,
-          error: err instanceof Error ? err.message : "Generation failed.",
-        }));
-
-        if (!res.ok) {
-          failure = res.error;
+        const body = await generateFor(student);
+        if ("error" in body) {
+          failure = body.error;
           return;
         }
-
         collected.push({
           studentId: student.id,
-          adjustment: res.result.adjustment,
-          udlBenefit: res.result.udl_benefit,
-          culturalNote: res.result.cultural_note,
-          traumaNote: res.result.trauma_note,
-          rationale: res.result.rationale,
+          original: body,
+          current: { ...body },
+          regenCount: 0,
         });
         const order = new Map(selectedIds.map((id, i) => [id, i]));
         setDrafts(
@@ -184,11 +223,39 @@ function Planner() {
     setGenerating(false);
   }
 
+  async function handleRegenerate(draft: Draft) {
+    const student = students.find((s) => s.id === draft.studentId);
+    if (!student || !topic) return;
+    setRegeneratingId(draft.studentId);
+    const body = await generateFor(student);
+    setRegeneratingId(null);
+    if ("error" in body) {
+      toast.error(body.error);
+      return;
+    }
+    recordActivity({
+      eventType: "regenerated",
+      surface: "planner",
+      studentId: student.id,
+      summary: `${topic.topic} — regenerated (attempt ${draft.regenCount + 2}) for ${student.preferredName}.`,
+    });
+    setDrafts((prev) =>
+      prev.map((d) =>
+        d.studentId === draft.studentId
+          ? { studentId: d.studentId, original: body, current: { ...body }, regenCount: d.regenCount + 1 }
+          : d,
+      ),
+    );
+    setEditingId(null);
+    toast.success(`New suggestion for ${student.preferredName}`);
+  }
+
   function commit(draft: Draft, status: "implemented" | "declined" | "saved") {
     const student = students.find((s) => s.id === draft.studentId);
     if (!student || !klass || !topic) return;
     const now = new Date();
-    const wasEdited = editingId === draft.studentId;
+    const edited = isEdited(draft);
+    const body = draft.current;
 
     const record: AdjustmentRecord = {
       id: newId("adj"),
@@ -196,19 +263,38 @@ function Planner() {
       classId: klass.id,
       curriculumTopicId: topic.id,
       activityDescription: activity,
-      generatedAdjustment: draft.adjustment,
-      udlBenefit: draft.udlBenefit,
-      culturalNote: isNoteMeaningful(draft.culturalNote) ? draft.culturalNote : null,
-      traumaNote: isNoteMeaningful(draft.traumaNote) ? draft.traumaNote : null,
-      rationale: draft.rationale,
+      generatedAdjustment: body.adjustment,
+      udlBenefit: body.udlBenefit,
+      culturalNote: isNoteMeaningful(body.culturalNote) ? body.culturalNote : null,
+      traumaNote: isNoteMeaningful(body.traumaNote) ? body.traumaNote : null,
+      rationale: body.rationale,
       nccdPillar: "Adjustment",
       evidenceType: student.profile.nccdLevel,
       teacherAction: null,
-      status: status === "implemented" && wasEdited ? "modified" : status,
+      status: status === "implemented" && edited ? "modified" : status,
       createdAt: now.toISOString(),
       implementedAt: status === "implemented" ? now.toISOString() : null,
     };
     addAdjustment(record);
+
+    if (edited) {
+      recordActivity({
+        eventType: "edited",
+        surface: "planner",
+        studentId: student.id,
+        adjustmentId: record.id,
+        summary: `Teacher edited the AI wording before ${status === "implemented" ? "accepting" : status}.`,
+      });
+    }
+
+    recordActivity({
+      eventType:
+        status === "implemented" ? "accepted" : status === "declined" ? "declined" : "saved",
+      surface: "planner",
+      studentId: student.id,
+      adjustmentId: record.id,
+      summary: `${topic.topic} — ${status === "implemented" ? "accepted and logged as NCCD evidence" : status === "declined" ? "declined, nothing logged" : "saved for later"}.`,
+    });
 
     if (status === "implemented") {
       addEvidenceLog({
@@ -218,8 +304,8 @@ function Planner() {
         logDate: now.toISOString().slice(0, 10),
         weekNumber: weekNumberFor(now),
         pillar: "Adjustment",
-        evidenceSummary: `${topic.topic}: ${draft.adjustment}`,
-        source: wasEdited ? "teacher-edited" : "AI-generated",
+        evidenceSummary: `${topic.topic}: ${body.adjustment}`,
+        source: edited ? "teacher-edited" : "AI-generated",
         createdAt: now.toISOString(),
       });
       toast.success(`Logged for ${student.preferredName}`, {
@@ -235,9 +321,9 @@ function Planner() {
 
     setHandled((prev) => ({ ...prev, [draft.studentId]: status }));
     setEditingId(null);
-    void updateAdjustment;
-    void adjustments;
   }
+
+  const reviewed = Object.keys(handled).length;
 
   return (
     <AppShell
@@ -380,7 +466,6 @@ function Planner() {
             </div>
           )}
 
-
           {error && (
             <p
               role="alert"
@@ -396,24 +481,45 @@ function Planner() {
           <section>
             <StepHeading
               step={4}
-              title="Review and decide"
-              hint="Every suggestion is editable. Nothing is logged until you implement it."
+              title="Review before saving"
+              hint="The original AI output stays on the left. Edit, regenerate or accept each student — nothing is saved until you decide."
             />
+            <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl bg-muted/60 p-4 text-sm text-muted-foreground">
+              <FileText size={16} aria-hidden="true" />
+              <span>
+                {reviewed} of {drafts.length} reviewed. Every generate, edit, regenerate and accept
+                is written to the audit trail in Settings.
+              </span>
+            </div>
             <div className="flex flex-col gap-5">
               {drafts.map((draft) => {
                 const student = students.find((s) => s.id === draft.studentId)!;
                 return (
-                  <AdjustmentCard
+                  <ReviewCard
                     key={draft.studentId}
                     student={student}
                     draft={draft}
                     editing={editingId === draft.studentId}
+                    regenerating={regeneratingId === draft.studentId}
                     outcome={handled[draft.studentId]}
                     onEdit={() => setEditingId(draft.studentId)}
+                    onStopEditing={() => setEditingId(null)}
+                    onRevert={() =>
+                      setDrafts((prev) =>
+                        prev.map((d) =>
+                          d.studentId === draft.studentId
+                            ? { ...d, current: { ...d.original } }
+                            : d,
+                        ),
+                      )
+                    }
+                    onRegenerate={() => void handleRegenerate(draft)}
                     onChange={(patch) =>
                       setDrafts((prev) =>
                         prev.map((d) =>
-                          d.studentId === draft.studentId ? { ...d, ...patch } : d,
+                          d.studentId === draft.studentId
+                            ? { ...d, current: { ...d.current, ...patch } }
+                            : d,
                         ),
                       )
                     }
@@ -424,8 +530,8 @@ function Planner() {
             </div>
             <div className="mt-6 rounded-xl bg-accent/20 p-5">
               <p className="text-sm text-foreground">
-                Implemented adjustments are timestamped and written to the Evidence Log against
-                the NCCD Adjustment pillar.
+                Accepted adjustments are timestamped and written to the Evidence Log against the
+                NCCD Adjustment pillar.
               </p>
               <Link
                 to="/evidence"
@@ -446,25 +552,35 @@ function isNoteMeaningful(note: string): boolean {
   return !!note && !/^no specific (cultural|trauma) note/i.test(note.trim());
 }
 
-function AdjustmentCard({
+function ReviewCard({
   student,
   draft,
   editing,
+  regenerating,
   outcome,
   onEdit,
+  onStopEditing,
+  onRevert,
+  onRegenerate,
   onChange,
   onCommit,
 }: {
   student: Student;
   draft: Draft;
   editing: boolean;
+  regenerating: boolean;
   outcome?: "implemented" | "declined" | "saved";
   onEdit: () => void;
-  onChange: (patch: Partial<Draft>) => void;
+  onStopEditing: () => void;
+  onRevert: () => void;
+  onRegenerate: () => void;
+  onChange: (patch: Partial<DraftBody>) => void;
   onCommit: (status: "implemented" | "declined" | "saved") => void;
 }) {
-  const showCultural = isNoteMeaningful(draft.culturalNote);
-  const showTrauma = isNoteMeaningful(draft.traumaNote);
+  const body = draft.current;
+  const edited = isEdited(draft);
+  const showCultural = isNoteMeaningful(body.culturalNote);
+  const showTrauma = isNoteMeaningful(body.traumaNote);
 
   return (
     <article className="rounded-xl bg-card p-6 shadow-warm-sm">
@@ -484,31 +600,64 @@ function AdjustmentCard({
           <AiBadge />
           <NccdLevelBadge level={student.profile.nccdLevel} />
           {isCald(student) && <CaldBadge label={student.profile.culturalBackground ?? undefined} />}
+          {draft.regenCount > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-3 py-1 text-xs font-medium text-muted-foreground">
+              Regenerated ×{draft.regenCount}
+            </span>
+          )}
+          {edited && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-accent/30 px-3 py-1 text-xs font-medium text-foreground">
+              Edited by you
+            </span>
+          )}
         </div>
       </header>
 
-      <div className="mt-5 flex flex-col gap-4">
-        <div>
-          <p className="section-label">The adjustment</p>
+      {/* Side-by-side review: original AI output vs. the version that will be saved */}
+      <div className="mt-5 grid gap-4 lg:grid-cols-2">
+        <div className="rounded-lg border border-border bg-muted/40 p-4">
+          <p className="section-label mb-2">Original AI output</p>
+          <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted-foreground">
+            {draft.original.adjustment}
+          </p>
+        </div>
+        <div className="rounded-lg border border-primary/40 bg-background p-4">
+          <p className="section-label mb-2">
+            {edited ? "Your version (this is what gets saved)" : "This is what gets saved"}
+          </p>
           {editing ? (
             <textarea
-              value={draft.adjustment}
+              value={body.adjustment}
               onChange={(e) => onChange({ adjustment: e.target.value })}
-              rows={5}
+              rows={8}
               aria-label={`Edit adjustment for ${student.preferredName}`}
-              className="mt-1 w-full rounded-lg border border-input bg-background p-3 text-sm"
+              className="w-full rounded-lg border border-input bg-background p-3 text-sm"
             />
           ) : (
-            <p className="mt-1 text-sm leading-relaxed text-foreground">{draft.adjustment}</p>
+            <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
+              {body.adjustment}
+            </p>
           )}
         </div>
+      </div>
 
+      <div className="mt-4 flex flex-col gap-4">
         <div className="rounded-lg bg-success-soft p-4">
           <p className="mb-1 flex items-center gap-2 text-xs font-medium uppercase tracking-[0.08em] text-primary">
             <Users2 size={14} aria-hidden="true" />
             This also supports
           </p>
-          <p className="text-sm text-foreground">{draft.udlBenefit}</p>
+          {editing ? (
+            <textarea
+              value={body.udlBenefit}
+              onChange={(e) => onChange({ udlBenefit: e.target.value })}
+              rows={2}
+              aria-label={`Edit UDL benefit for ${student.preferredName}`}
+              className="w-full rounded-lg border border-input bg-background p-2 text-sm"
+            />
+          ) : (
+            <p className="text-sm text-foreground">{body.udlBenefit}</p>
+          )}
         </div>
 
         {showCultural && (
@@ -517,7 +666,7 @@ function AdjustmentCard({
               <Globe2 size={14} aria-hidden="true" />
               Cultural consideration
             </p>
-            <p className="text-sm text-foreground">{draft.culturalNote}</p>
+            <p className="text-sm text-foreground">{body.culturalNote}</p>
           </div>
         )}
 
@@ -527,11 +676,11 @@ function AdjustmentCard({
               <ShieldAlert size={14} aria-hidden="true" />
               Trauma-informed note
             </p>
-            <p className="text-sm text-foreground">{draft.traumaNote}</p>
+            <p className="text-sm text-foreground">{body.traumaNote}</p>
           </div>
         )}
 
-        <p className="text-sm italic text-muted-foreground">Why: {draft.rationale}</p>
+        <p className="text-sm italic text-muted-foreground">Why: {body.rationale}</p>
 
         <div className="flex flex-wrap items-center gap-2">
           <PillarBadge pillar="Adjustment" />
@@ -545,7 +694,7 @@ function AdjustmentCard({
         {outcome ? (
           <p className="text-sm font-medium text-primary">
             {outcome === "implemented"
-              ? "Implemented and logged as NCCD evidence."
+              ? "Accepted and logged as NCCD evidence."
               : outcome === "saved"
                 ? "Saved for later. No evidence logged."
                 : "Declined. No evidence logged."}
@@ -557,15 +706,34 @@ function AdjustmentCard({
               className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-light"
             >
               <Check size={16} aria-hidden="true" />
-              {editing ? "Save and implement" : "Implement as is"}
+              {edited ? "Accept my version" : "Accept as is"}
             </button>
-            {!editing && (
+            <button
+              onClick={editing ? onStopEditing : onEdit}
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-border px-4 text-sm font-medium text-foreground hover:bg-muted"
+            >
+              <Pencil size={16} aria-hidden="true" />
+              {editing ? "Done editing" : "Edit"}
+            </button>
+            <button
+              onClick={onRegenerate}
+              disabled={regenerating}
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-border px-4 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-60"
+            >
+              {regenerating ? (
+                <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+              ) : (
+                <RefreshCw size={16} aria-hidden="true" />
+              )}
+              {regenerating ? "Regenerating…" : "Regenerate"}
+            </button>
+            {edited && (
               <button
-                onClick={onEdit}
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-border px-4 text-sm font-medium text-foreground hover:bg-muted"
+                onClick={onRevert}
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-border px-4 text-sm font-medium text-muted-foreground hover:bg-muted"
               >
-                <Pencil size={16} aria-hidden="true" />
-                Modify
+                <Undo2 size={16} aria-hidden="true" />
+                Revert to AI original
               </button>
             )}
             <button
