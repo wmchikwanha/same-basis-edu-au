@@ -30,6 +30,7 @@ const navItems = [
   { to: "/crisis", label: "Crisis Guidance", icon: HeartPulse },
   { to: "/family", label: "Family Messages", icon: MessageCircle },
   { to: "/evidence", label: "Evidence Log", icon: ClipboardCheck },
+  { to: "/import", label: "Import Data", icon: Upload },
   { to: "/help", label: "Help & Info", icon: LifeBuoy },
   { to: "/settings", label: "Settings", icon: SettingsIcon },
 ] as const;
