@@ -248,7 +248,40 @@ function Planner() {
       ),
     );
     setEditingId(null);
-    toast.success(`New suggestion for ${student.preferredName}`);
+    if (!silent) toast.success(`New suggestion for ${student.preferredName}`);
+  }
+
+  async function bulkRegenerate() {
+    const pending = drafts.filter((d) => !handled[d.studentId]);
+    if (pending.length === 0) return;
+    setBulkBusy("regenerate");
+    let cursor = 0;
+    const worker = async () => {
+      while (cursor < pending.length) {
+        await handleRegenerate(pending[cursor++], true);
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(3, pending.length) }, worker));
+    setBulkBusy(null);
+    toast.success(`Regenerated ${pending.length} outputs`, {
+      description: "Review each one — exceptions can still be edited or declined individually.",
+    });
+  }
+
+  function bulkAccept() {
+    const pending = drafts.filter((d) => !handled[d.studentId]);
+    if (pending.length === 0) return;
+    setBulkBusy("accept");
+    for (const draft of pending) commit(draft, "implemented", true);
+    recordActivity({
+      eventType: "accepted",
+      surface: "planner",
+      summary: `Bulk accepted ${pending.length} AI outputs for ${topic?.topic ?? "this lesson"}.`,
+    });
+    setBulkBusy(null);
+    toast.success(`Accepted ${pending.length} adjustments`, {
+      description: "All logged against the NCCD Adjustment pillar.",
+    });
   }
 
   function commit(draft: Draft, status: "implemented" | "declined" | "saved") {
