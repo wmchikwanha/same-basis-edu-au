@@ -245,6 +245,17 @@ function ImportPage() {
   }
 
   const total = staged.classes.length + staged.students.length + staged.evidence.length;
+  const allIssues = [...issues.classes, ...issues.students, ...issues.evidence];
+
+  function exportIssues() {
+    downloadCsv(
+      `samebasis-import-errors-${new Date().toISOString().slice(0, 10)}.csv`,
+      toCsv(
+        ["File", "Row", "Column", "Value", "Why it was rejected"],
+        allIssues.map((i) => [i.kind, i.row, i.field, i.value, i.message]),
+      ),
+    );
+  }
 
   async function onImport() {
     setBusy(true);
@@ -339,6 +350,62 @@ function ImportPage() {
             Imports add to your workspace — nothing existing is deleted.
           </span>
         </div>
+
+        {allIssues.length > 0 && (
+          <section className="rounded-xl border border-warning/40 bg-card p-6 shadow-warm-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                  <AlertTriangle size={20} className="text-warning" aria-hidden="true" />
+                  Import error report — {allIssues.length} row
+                  {allIssues.length === 1 ? "" : "s"} rejected
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  These rows will not be imported. Fix them in your spreadsheet and upload the file
+                  again — valid rows above are still ready to go.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={exportIssues}
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-border px-4 text-sm font-medium text-foreground hover:bg-muted"
+              >
+                <Download size={16} aria-hidden="true" />
+                Export report
+              </button>
+            </div>
+            <div className="mt-4 overflow-x-auto rounded-lg border border-border">
+              <table className="w-full min-w-[640px] text-left text-sm">
+                <caption className="sr-only">Rejected CSV rows and the reason for each</caption>
+                <thead className="bg-muted/60 text-xs uppercase tracking-[0.08em] text-muted-foreground">
+                  <tr>
+                    <th scope="col" className="px-3 py-2 font-medium">File</th>
+                    <th scope="col" className="px-3 py-2 font-medium">Row</th>
+                    <th scope="col" className="px-3 py-2 font-medium">Column</th>
+                    <th scope="col" className="px-3 py-2 font-medium">Value</th>
+                    <th scope="col" className="px-3 py-2 font-medium">Why</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allIssues.map((issue) => (
+                    <tr
+                      key={`${issue.kind}-${issue.row}-${issue.field}`}
+                      className="border-t border-border align-top"
+                    >
+                      <td className="px-3 py-2 capitalize text-muted-foreground">{issue.kind}</td>
+                      <td className="whitespace-nowrap px-3 py-2 font-medium text-foreground">
+                        Row {issue.row}
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground">{issue.field}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{issue.value || "—"}</td>
+                      <td className="px-3 py-2 text-foreground">{issue.message}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
 
         {result && (
           <section className="rounded-xl bg-card p-6 shadow-warm-sm">
