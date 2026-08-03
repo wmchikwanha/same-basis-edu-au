@@ -9,11 +9,18 @@ import {
   AlertTriangle,
   Timer,
   CheckCircle2,
+  Filter,
+  Search,
 } from "lucide-react";
 import { toast } from "sonner";
 import { clearActivity, listActivity } from "@/lib/activity.functions";
 import { recordActivity } from "@/lib/activity";
-import { ACTIVITY_LABELS, type ActivityRecord } from "@/lib/activity-types";
+import {
+  ACTIVITY_EVENTS,
+  ACTIVITY_LABELS,
+  ACTIVITY_SURFACES,
+  type ActivityRecord,
+} from "@/lib/activity-types";
 import { downloadCsv, toCsv } from "@/lib/csv";
 import { useAppState } from "@/lib/app-state";
 
@@ -49,6 +56,12 @@ export function AuditTrail() {
   const wipeActivity = useServerFn(clearActivity);
   const [events, setEvents] = useState<ActivityRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState("");
+  const [studentFilter, setStudentFilter] = useState("all");
+  const [eventFilter, setEventFilter] = useState("all");
+  const [surfaceFilter, setSurfaceFilter] = useState("all");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -72,8 +85,42 @@ export function AuditTrail() {
     [students],
   );
 
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    const from = fromDate ? new Date(`${fromDate}T00:00:00`).getTime() : null;
+    const to = toDate ? new Date(`${toDate}T23:59:59.999`).getTime() : null;
+    return events.filter((e) => {
+      if (studentFilter !== "all" && e.studentId !== studentFilter) return false;
+      if (eventFilter !== "all" && e.eventType !== eventFilter) return false;
+      if (surfaceFilter !== "all" && e.surface !== surfaceFilter) return false;
+      const stamp = new Date(e.createdAt).getTime();
+      if (from !== null && stamp < from) return false;
+      if (to !== null && stamp > to) return false;
+      if (needle) {
+        const haystack = [
+          e.summary,
+          e.surface,
+          ACTIVITY_LABELS[e.eventType] ?? e.eventType,
+          nameFor(e.studentId),
+        ]
+          .join(" ")
+          .toLowerCase();
+        if (!haystack.includes(needle)) return false;
+      }
+      return true;
+    });
+  }, [events, query, studentFilter, eventFilter, surfaceFilter, fromDate, toDate, nameFor]);
+
+  const filtersActive =
+    query.trim() !== "" ||
+    studentFilter !== "all" ||
+    eventFilter !== "all" ||
+    surfaceFilter !== "all" ||
+    fromDate !== "" ||
+    toDate !== "";
+
   const stats = useMemo(() => {
-    const generations = events.filter(
+    const generations = filtered.filter(
       (e) => e.eventType === "generated" || e.eventType === "regenerated",
     );
     const durations = generations
@@ -85,19 +132,19 @@ export function AuditTrail() {
     const slowest = durations.length ? Math.max(...durations) : 0;
     return {
       generations: generations.length,
-      accepted: events.filter((e) => e.eventType === "accepted").length,
-      edits: events.filter((e) => e.eventType === "edited").length,
+      accepted: filtered.filter((e) => e.eventType === "accepted").length,
+      edits: filtered.filter((e) => e.eventType === "edited").length,
       avg,
       slowest,
-      timeouts: events.filter((e) => e.eventType === "timeout").length,
-      errors: events.filter((e) => e.eventType === "error").length,
+      timeouts: filtered.filter((e) => e.eventType === "timeout").length,
+      errors: filtered.filter((e) => e.eventType === "error").length,
     };
-  }, [events]);
+  }, [filtered]);
 
   function exportCsv() {
     const csv = toCsv(
       ["Timestamp", "Event", "Area", "Student", "Detail", "Duration (ms)", "Succeeded"],
-      events.map((e) => [
+      filtered.map((e) => [
         new Date(e.createdAt).toLocaleString("en-AU"),
         ACTIVITY_LABELS[e.eventType] ?? e.eventType,
         e.surface,
@@ -111,7 +158,7 @@ export function AuditTrail() {
     recordActivity({
       eventType: "exported",
       surface: "settings",
-      summary: `Exported ${events.length} audit trail entries.`,
+      summary: `Exported ${filtered.length} audit trail entries${filtersActive ? " (filtered view)" : ""}.`,
     });
     toast.success("Audit trail exported");
   }
@@ -137,6 +184,115 @@ export function AuditTrail() {
           <RefreshCw size={16} aria-hidden="true" />
           Refresh
         </button>
+      </div>
+
+      <div className="mt-5 rounded-lg border border-border bg-background p-4">
+        <p className="section-label flex items-center gap-2">
+          <Filter size={14} aria-hidden="true" />
+          Filter the trail
+        </p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-muted-foreground">Search</span>
+            <span className="relative">
+              <Search
+                size={14}
+                aria-hidden="true"
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+              />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value.slice(0, 100))}
+                placeholder="Search detail, student or event"
+                className="min-h-[44px] w-full rounded-lg border border-input bg-background pl-8 pr-3 text-sm"
+              />
+            </span>
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-muted-foreground">Student</span>
+            <select
+              value={studentFilter}
+              onChange={(e) => setStudentFilter(e.target.value)}
+              className="min-h-[44px] rounded-lg border border-input bg-background px-3 text-sm"
+            >
+              <option value="all">All students</option>
+              {students.map((s) => (
+                <option key={s.id} value={s.id}>
+                  {s.preferredName} {s.lastName}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-muted-foreground">Event type</span>
+            <select
+              value={eventFilter}
+              onChange={(e) => setEventFilter(e.target.value)}
+              className="min-h-[44px] rounded-lg border border-input bg-background px-3 text-sm"
+            >
+              <option value="all">All events</option>
+              {ACTIVITY_EVENTS.map((evt) => (
+                <option key={evt} value={evt}>
+                  {ACTIVITY_LABELS[evt]}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-muted-foreground">Area</span>
+            <select
+              value={surfaceFilter}
+              onChange={(e) => setSurfaceFilter(e.target.value)}
+              className="min-h-[44px] rounded-lg border border-input bg-background px-3 text-sm capitalize"
+            >
+              <option value="all">All areas</option>
+              {ACTIVITY_SURFACES.map((surface) => (
+                <option key={surface} value={surface} className="capitalize">
+                  {surface}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-muted-foreground">From date</span>
+            <input
+              type="date"
+              value={fromDate}
+              onChange={(e) => setFromDate(e.target.value)}
+              className="min-h-[44px] rounded-lg border border-input bg-background px-3 text-sm"
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-xs font-medium text-muted-foreground">To date</span>
+            <input
+              type="date"
+              value={toDate}
+              onChange={(e) => setToDate(e.target.value)}
+              className="min-h-[44px] rounded-lg border border-input bg-background px-3 text-sm"
+            />
+          </label>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <p aria-live="polite" className="text-sm text-muted-foreground">
+            Showing {filtered.length} of {events.length} entries.
+          </p>
+          {filtersActive && (
+            <button
+              type="button"
+              onClick={() => {
+                setQuery("");
+                setStudentFilter("all");
+                setEventFilter("all");
+                setSurfaceFilter("all");
+                setFromDate("");
+                setToDate("");
+              }}
+              className="min-h-[40px] rounded-lg border border-border px-3 text-sm font-medium text-foreground hover:bg-muted"
+            >
+              Clear filters
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -165,7 +321,7 @@ export function AuditTrail() {
           icon={AlertTriangle}
           tone={stats.errors ? "warning" : "default"}
         />
-        <Stat label="Total entries" value={String(events.length)} icon={Activity} />
+        <Stat label="Total entries" value={String(filtered.length)} icon={Activity} />
       </div>
 
       <div className="mt-5 overflow-x-auto rounded-lg border border-border">
@@ -190,15 +346,16 @@ export function AuditTrail() {
                 </td>
               </tr>
             )}
-            {!loading && events.length === 0 && (
+            {!loading && filtered.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">
-                  No AI activity recorded yet. Generate adjustments in the Lesson Planner and the
-                  trail will fill in.
+                  {filtersActive
+                    ? "No events match these filters. Try widening the date range or clearing the search."
+                    : "No AI activity recorded yet. Generate adjustments in the Lesson Planner and the trail will fill in."}
                 </td>
               </tr>
             )}
-            {events.slice(0, 60).map((event) => (
+            {filtered.slice(0, 60).map((event) => (
               <tr key={event.id} className="border-t border-border align-top">
                 <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">
                   {new Date(event.createdAt).toLocaleString("en-AU", {
@@ -222,7 +379,7 @@ export function AuditTrail() {
           </tbody>
         </table>
       </div>
-      {events.length > 60 && (
+      {filtered.length > 60 && (
         <p className="mt-2 text-xs text-muted-foreground">
           Showing the 60 most recent entries — export for the full trail.
         </p>
@@ -232,7 +389,7 @@ export function AuditTrail() {
         <button
           type="button"
           onClick={exportCsv}
-          disabled={events.length === 0}
+          disabled={filtered.length === 0}
           className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground hover:bg-primary-light disabled:opacity-60"
         >
           <Download size={18} aria-hidden="true" />

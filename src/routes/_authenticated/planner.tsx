@@ -16,6 +16,7 @@ import {
   ArrowRight,
   RefreshCw,
   Undo2,
+  CheckCheck,
   FileText,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -100,7 +101,8 @@ function Planner() {
   const [generating, setGenerating] = useState(false);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
+  const [regeneratingIds, setRegeneratingIds] = useState<string[]>([]);
+  const [bulkBusy, setBulkBusy] = useState<null | "accept" | "regenerate">(null);
   const [handled, setHandled] = useState<Record<string, "implemented" | "declined" | "saved">>({});
   const [error, setError] = useState<string | null>(null);
 
@@ -223,14 +225,14 @@ function Planner() {
     setGenerating(false);
   }
 
-  async function handleRegenerate(draft: Draft) {
+  async function handleRegenerate(draft: Draft, silent = false) {
     const student = students.find((s) => s.id === draft.studentId);
     if (!student || !topic) return;
-    setRegeneratingId(draft.studentId);
+    setRegeneratingIds((prev) => [...prev, draft.studentId]);
     const body = await generateFor(student);
-    setRegeneratingId(null);
+    setRegeneratingIds((prev) => prev.filter((id) => id !== draft.studentId));
     if ("error" in body) {
-      toast.error(body.error);
+      if (!silent) toast.error(body.error);
       return;
     }
     recordActivity({
@@ -247,10 +249,47 @@ function Planner() {
       ),
     );
     setEditingId(null);
-    toast.success(`New suggestion for ${student.preferredName}`);
+    if (!silent) toast.success(`New suggestion for ${student.preferredName}`);
   }
 
-  function commit(draft: Draft, status: "implemented" | "declined" | "saved") {
+  async function bulkRegenerate() {
+    const pending = drafts.filter((d) => !handled[d.studentId]);
+    if (pending.length === 0) return;
+    setBulkBusy("regenerate");
+    let cursor = 0;
+    const worker = async () => {
+      while (cursor < pending.length) {
+        await handleRegenerate(pending[cursor++], true);
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(3, pending.length) }, worker));
+    setBulkBusy(null);
+    toast.success(`Regenerated ${pending.length} outputs`, {
+      description: "Review each one — exceptions can still be edited or declined individually.",
+    });
+  }
+
+  function bulkAccept() {
+    const pending = drafts.filter((d) => !handled[d.studentId]);
+    if (pending.length === 0) return;
+    setBulkBusy("accept");
+    for (const draft of pending) commit(draft, "implemented", true);
+    recordActivity({
+      eventType: "accepted",
+      surface: "planner",
+      summary: `Bulk accepted ${pending.length} AI outputs for ${topic?.topic ?? "this lesson"}.`,
+    });
+    setBulkBusy(null);
+    toast.success(`Accepted ${pending.length} adjustments`, {
+      description: "All logged against the NCCD Adjustment pillar.",
+    });
+  }
+
+  function commit(
+    draft: Draft,
+    status: "implemented" | "declined" | "saved",
+    silent = false,
+  ) {
     const student = students.find((s) => s.id === draft.studentId);
     if (!student || !klass || !topic) return;
     const now = new Date();
@@ -308,12 +347,13 @@ function Planner() {
         source: edited ? "teacher-edited" : "AI-generated",
         createdAt: now.toISOString(),
       });
-      toast.success(`Logged for ${student.preferredName}`, {
-        description: "Evidence recorded against the NCCD Adjustment pillar.",
-      });
+      if (!silent)
+        toast.success(`Logged for ${student.preferredName}`, {
+          description: "Evidence recorded against the NCCD Adjustment pillar.",
+        });
     } else if (status === "saved") {
-      toast.success(`Saved for later — ${student.preferredName}`);
-    } else {
+      if (!silent) toast.success(`Saved for later — ${student.preferredName}`);
+    } else if (!silent) {
       toast(`Declined for ${student.preferredName}`, {
         description: "Nothing was logged as evidence.",
       });
@@ -324,6 +364,7 @@ function Planner() {
   }
 
   const reviewed = Object.keys(handled).length;
+  const pendingCount = drafts.filter((d) => !handled[d.studentId]).length;
 
   return (
     <AppShell
@@ -484,13 +525,49 @@ function Planner() {
               title="Review before saving"
               hint="The original AI output stays on the left. Edit, regenerate or accept each student — nothing is saved until you decide."
             />
-            <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl bg-muted/60 p-4 text-sm text-muted-foreground">
-              <FileText size={16} aria-hidden="true" />
-              <span>
-                {reviewed} of {drafts.length} reviewed. Every generate, edit, regenerate and accept
-                is written to the audit trail in Settings.
-              </span>
+            <div className="mb-4 flex flex-col gap-3 rounded-xl bg-muted/60 p-4">
+              <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                <FileText size={16} aria-hidden="true" />
+                <span>
+                  {reviewed} of {drafts.length} reviewed
+                  {pendingCount > 0 ? ` · ${pendingCount} still to decide` : " · all decided"}. Every
+                  generate, edit, regenerate and accept is written to the audit trail in Settings.
+                </span>
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={bulkAccept}
+                  disabled={pendingCount === 0 || bulkBusy !== null}
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-light disabled:opacity-60"
+                >
+                  {bulkBusy === "accept" ? (
+                    <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+                  ) : (
+                    <CheckCheck size={16} aria-hidden="true" />
+                  )}
+                  Accept all remaining ({pendingCount})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void bulkRegenerate()}
+                  disabled={pendingCount === 0 || bulkBusy !== null}
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-border bg-background px-4 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-60"
+                >
+                  {bulkBusy === "regenerate" ? (
+                    <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+                  ) : (
+                    <RefreshCw size={16} aria-hidden="true" />
+                  )}
+                  Regenerate all remaining
+                </button>
+                <span className="text-xs text-muted-foreground">
+                  Bulk actions only touch outputs you haven't decided on — handle exceptions
+                  individually below first.
+                </span>
+              </div>
             </div>
+
             <div className="flex flex-col gap-5">
               {drafts.map((draft) => {
                 const student = students.find((s) => s.id === draft.studentId)!;
@@ -500,7 +577,7 @@ function Planner() {
                     student={student}
                     draft={draft}
                     editing={editingId === draft.studentId}
-                    regenerating={regeneratingId === draft.studentId}
+                    regenerating={regeneratingIds.includes(draft.studentId)}
                     outcome={handled[draft.studentId]}
                     onEdit={() => setEditingId(draft.studentId)}
                     onStopEditing={() => setEditingId(null)}

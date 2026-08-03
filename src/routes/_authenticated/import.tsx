@@ -98,43 +98,116 @@ const HINTS: Record<Kind, string> = {
     "studentName matches a student's preferred or first name. Dates as YYYY-MM-DD. Pillar is Consultation, Adjustment, Monitoring or Review.",
 };
 
-function coerce(kind: Kind, rows: Record<string, string>[]) {
-  const pick = (row: Record<string, string>, key: string) =>
-    row[key.toLowerCase().replace(/[^a-z0-9]/g, "")] ?? "";
+const PILLARS = ["Consultation", "Adjustment", "Monitoring", "Review"];
+const NCCD_CATEGORIES = ["Cognitive", "Social-Emotional", "Physical", "Sensory"];
+const NCCD_LEVELS = ["QDTP", "Supplementary", "Substantial", "Extensive"];
 
-  if (kind === "classes") {
-    return rows
-      .filter((r) => pick(r, "name"))
-      .map((r) => ({
-        name: pick(r, "name"),
-        yearLevel: Number(pick(r, "yearLevel")) || 8,
-        subject: pick(r, "subject") || "General",
-      }));
-  }
-  if (kind === "students") {
-    return rows
-      .filter((r) => pick(r, "firstName"))
-      .map((r) => {
-        const out: Record<string, string> = {};
-        for (const header of TEMPLATES.students.headers) out[header] = pick(r, header);
-        return out;
-      });
-  }
-  return rows
-    .filter((r) => pick(r, "studentName") && pick(r, "evidenceSummary"))
-    .map((r) => ({
-      studentName: pick(r, "studentName"),
-      logDate: pick(r, "logDate") || new Date().toISOString().slice(0, 10),
-      pillar: pick(r, "pillar") || "Adjustment",
-      evidenceSummary: pick(r, "evidenceSummary"),
-      source: pick(r, "source") || "teacher-recorded",
-    }));
+export type RowIssue = {
+  kind: Kind;
+  row: number;
+  field: string;
+  message: string;
+  value: string;
+};
+
+type Validated = { rows: Record<string, unknown>[]; issues: RowIssue[] };
+
+const pick = (row: Record<string, string>, key: string) =>
+  (row[key.toLowerCase().replace(/[^a-z0-9]/g, "")] ?? "").trim();
+
+const isBlankRow = (row: Record<string, string>) =>
+  Object.values(row).every((value) => value.trim() === "");
+
+/** Validate each CSV row and report exactly which row and field failed, and why. */
+function validate(kind: Kind, parsed: Record<string, string>[]): Validated {
+  const rows: Record<string, unknown>[] = [];
+  const issues: RowIssue[] = [];
+  const seen = new Set<string>();
+
+  parsed.forEach((raw, index) => {
+    // +2: row 1 is the header, and humans count from 1.
+    const rowNumber = index + 2;
+    const fail = (field: string, message: string, value = "") =>
+      issues.push({ kind, row: rowNumber, field, message, value });
+
+    if (isBlankRow(raw)) return;
+
+    if (kind === "classes") {
+      const name = pick(raw, "name");
+      const yearRaw = pick(raw, "yearLevel");
+      const year = Number(yearRaw);
+      if (!name) return fail("name", "Class name is required.");
+      if (name.length > 120) return fail("name", "Class name must be 120 characters or fewer.", name);
+      const key = name.toLowerCase();
+      if (seen.has(key)) return fail("name", "Duplicate class name in this file.", name);
+      if (yearRaw && (!Number.isInteger(year) || year < 1 || year > 12))
+        return fail("yearLevel", "Year level must be a whole number from 1 to 12.", yearRaw);
+      seen.add(key);
+      rows.push({ name, yearLevel: yearRaw ? year : 8, subject: pick(raw, "subject") || "General" });
+      return;
+    }
+
+    if (kind === "students") {
+      const firstName = pick(raw, "firstName");
+      const lastName = pick(raw, "lastName");
+      const className = pick(raw, "className");
+      if (!firstName) return fail("firstName", "First name is required.");
+      if (!lastName) return fail("lastName", "Last name is required.", firstName);
+      if (!className)
+        return fail("className", "className is required and must match an existing or imported class.", firstName);
+      const category = pick(raw, "nccdCategory");
+      if (category && !NCCD_CATEGORIES.some((c) => c.toLowerCase() === category.toLowerCase()))
+        return fail("nccdCategory", `Must be one of: ${NCCD_CATEGORIES.join(", ")}.`, category);
+      const level = pick(raw, "nccdLevel");
+      if (level && !NCCD_LEVELS.some((l) => l.toLowerCase() === level.toLowerCase()))
+        return fail("nccdLevel", `Must be one of: ${NCCD_LEVELS.join(", ")}.`, level);
+      const description = pick(raw, "functionalDescription");
+      if (description.length > 1200)
+        return fail("functionalDescription", "Must be 1200 characters or fewer.", `${description.length} characters`);
+      const key = `${firstName}|${lastName}`.toLowerCase();
+      if (seen.has(key)) return fail("firstName", "Duplicate student in this file.", `${firstName} ${lastName}`);
+      seen.add(key);
+      const out: Record<string, string> = {};
+      for (const header of TEMPLATES.students.headers) out[header] = pick(raw, header);
+      out.nccdCategory = category || "Cognitive";
+      out.nccdLevel = level || "Supplementary";
+      rows.push(out);
+      return;
+    }
+
+    const studentName = pick(raw, "studentName");
+    const summary = pick(raw, "evidenceSummary");
+    const logDate = pick(raw, "logDate");
+    const pillar = pick(raw, "pillar");
+    if (!studentName) return fail("studentName", "Student name is required.");
+    if (!summary) return fail("evidenceSummary", "Evidence summary is required.", studentName);
+    if (summary.length > 1000)
+      return fail("evidenceSummary", "Must be 1000 characters or fewer.", `${summary.length} characters`);
+    if (logDate && Number.isNaN(new Date(logDate).getTime()))
+      return fail("logDate", "Date could not be read — use YYYY-MM-DD.", logDate);
+    if (pillar && !PILLARS.some((pl) => pl.toLowerCase() === pillar.toLowerCase()))
+      return fail("pillar", `Must be one of: ${PILLARS.join(", ")}.`, pillar);
+    rows.push({
+      studentName,
+      logDate: logDate || new Date().toISOString().slice(0, 10),
+      pillar: pillar || "Adjustment",
+      evidenceSummary: summary,
+      source: pick(raw, "source") || "teacher-recorded",
+    });
+  });
+
+  return { rows, issues };
 }
 
 function ImportPage() {
   const { refresh } = useAppState();
   const runImport = useServerFn(importWorkspaceData);
   const [staged, setStaged] = useState<Record<Kind, Record<string, unknown>[]>>({
+    classes: [],
+    students: [],
+    evidence: [],
+  });
+  const [issues, setIssues] = useState<Record<Kind, RowIssue[]>>({
     classes: [],
     students: [],
     evidence: [],
@@ -151,9 +224,19 @@ function ImportPage() {
     const reader = new FileReader();
     reader.onload = () => {
       try {
-        const rows = coerce(kind, parseCsvObjects(String(reader.result ?? "")));
+        const { rows, issues: rowIssues } = validate(
+          kind,
+          parseCsvObjects(String(reader.result ?? "")),
+        );
         setStaged((prev) => ({ ...prev, [kind]: rows }));
-        toast.success(`${rows.length} ${kind} rows read from ${file.name}`);
+        setIssues((prev) => ({ ...prev, [kind]: rowIssues }));
+        if (rowIssues.length > 0) {
+          toast.warning(`${rows.length} valid rows, ${rowIssues.length} skipped in ${file.name}`, {
+            description: "See the import error report below for the exact row and reason.",
+          });
+        } else {
+          toast.success(`${rows.length} ${kind} rows read from ${file.name}`);
+        }
       } catch {
         toast.error(`We couldn't read ${file.name}. Check it is a plain CSV file.`);
       }
@@ -162,6 +245,17 @@ function ImportPage() {
   }
 
   const total = staged.classes.length + staged.students.length + staged.evidence.length;
+  const allIssues = [...issues.classes, ...issues.students, ...issues.evidence];
+
+  function exportIssues() {
+    downloadCsv(
+      `samebasis-import-errors-${new Date().toISOString().slice(0, 10)}.csv`,
+      toCsv(
+        ["File", "Row", "Column", "Value", "Why it was rejected"],
+        allIssues.map((i) => [i.kind, i.row, i.field, i.value, i.message]),
+      ),
+    );
+  }
 
   async function onImport() {
     setBusy(true);
@@ -227,6 +321,11 @@ function ImportPage() {
               </button>
               <span className="text-sm text-muted-foreground">
                 {staged[kind].length} row{staged[kind].length === 1 ? "" : "s"} ready
+                {issues[kind].length > 0 && (
+                  <span className="ml-1 font-medium text-warning">
+                    · {issues[kind].length} row{issues[kind].length === 1 ? "" : "s"} rejected
+                  </span>
+                )}
               </span>
             </div>
           </section>
@@ -251,6 +350,62 @@ function ImportPage() {
             Imports add to your workspace — nothing existing is deleted.
           </span>
         </div>
+
+        {allIssues.length > 0 && (
+          <section className="rounded-xl border border-warning/40 bg-card p-6 shadow-warm-sm">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                  <AlertTriangle size={20} className="text-warning" aria-hidden="true" />
+                  Import error report — {allIssues.length} row
+                  {allIssues.length === 1 ? "" : "s"} rejected
+                </h2>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  These rows will not be imported. Fix them in your spreadsheet and upload the file
+                  again — valid rows above are still ready to go.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={exportIssues}
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-border px-4 text-sm font-medium text-foreground hover:bg-muted"
+              >
+                <Download size={16} aria-hidden="true" />
+                Export report
+              </button>
+            </div>
+            <div className="mt-4 overflow-x-auto rounded-lg border border-border">
+              <table className="w-full min-w-[640px] text-left text-sm">
+                <caption className="sr-only">Rejected CSV rows and the reason for each</caption>
+                <thead className="bg-muted/60 text-xs uppercase tracking-[0.08em] text-muted-foreground">
+                  <tr>
+                    <th scope="col" className="px-3 py-2 font-medium">File</th>
+                    <th scope="col" className="px-3 py-2 font-medium">Row</th>
+                    <th scope="col" className="px-3 py-2 font-medium">Column</th>
+                    <th scope="col" className="px-3 py-2 font-medium">Value</th>
+                    <th scope="col" className="px-3 py-2 font-medium">Why</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {allIssues.map((issue) => (
+                    <tr
+                      key={`${issue.kind}-${issue.row}-${issue.field}`}
+                      className="border-t border-border align-top"
+                    >
+                      <td className="px-3 py-2 capitalize text-muted-foreground">{issue.kind}</td>
+                      <td className="whitespace-nowrap px-3 py-2 font-medium text-foreground">
+                        Row {issue.row}
+                      </td>
+                      <td className="px-3 py-2 text-muted-foreground">{issue.field}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{issue.value || "—"}</td>
+                      <td className="px-3 py-2 text-foreground">{issue.message}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
 
         {result && (
           <section className="rounded-xl bg-card p-6 shadow-warm-sm">
