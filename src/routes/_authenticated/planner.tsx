@@ -284,7 +284,11 @@ function Planner() {
     });
   }
 
-  function commit(draft: Draft, status: "implemented" | "declined" | "saved") {
+  function commit(
+    draft: Draft,
+    status: "implemented" | "declined" | "saved",
+    silent = false,
+  ) {
     const student = students.find((s) => s.id === draft.studentId);
     if (!student || !klass || !topic) return;
     const now = new Date();
@@ -342,12 +346,13 @@ function Planner() {
         source: edited ? "teacher-edited" : "AI-generated",
         createdAt: now.toISOString(),
       });
-      toast.success(`Logged for ${student.preferredName}`, {
-        description: "Evidence recorded against the NCCD Adjustment pillar.",
-      });
+      if (!silent)
+        toast.success(`Logged for ${student.preferredName}`, {
+          description: "Evidence recorded against the NCCD Adjustment pillar.",
+        });
     } else if (status === "saved") {
-      toast.success(`Saved for later — ${student.preferredName}`);
-    } else {
+      if (!silent) toast.success(`Saved for later — ${student.preferredName}`);
+    } else if (!silent) {
       toast(`Declined for ${student.preferredName}`, {
         description: "Nothing was logged as evidence.",
       });
