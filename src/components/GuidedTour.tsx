@@ -33,15 +33,24 @@ const steps: Step[] = [
   },
 ];
 
+/** Automated browsers (Playwright, Puppeteer, Selenium) never see the tour. */
+function isAutomated(): boolean {
+  return typeof navigator !== "undefined" && navigator.webdriver === true;
+}
+
 export function GuidedTour() {
   const { profile, hydrated } = useAppState();
   const [index, setIndex] = useState<number | null>(null);
   const [rect, setRect] = useState<DOMRect | null>(null);
 
-  const finish = useCallback(() => {
+  const markSeen = useCallback(() => {
     if (profile) localStorage.setItem(storageKey(profile.id), "done");
-    setIndex(null);
   }, [profile]);
+
+  const finish = useCallback(() => {
+    markSeen();
+    setIndex(null);
+  }, [markSeen]);
 
   useEffect(() => {
     const handler = () => setIndex(0);
@@ -51,10 +60,35 @@ export function GuidedTour() {
 
   useEffect(() => {
     if (!hydrated || !profile || index !== null) return;
+    if (isAutomated()) return;
     if (localStorage.getItem(storageKey(profile.id))) return;
     const t = setTimeout(() => setIndex(0), 600);
     return () => clearTimeout(t);
   }, [hydrated, profile, index]);
+
+  // As soon as the tour is shown once, record it as seen so it can never
+  // reappear for this teacher — even if they navigate away mid-tour.
+  useEffect(() => {
+    if (index !== null) markSeen();
+  }, [index, markSeen]);
+
+  // Any click or keypress anywhere outside the tour card dismisses it. The
+  // overlay itself is pointer-events-none, so that click still reaches the
+  // underlying UI and nothing is ever blocked.
+  useEffect(() => {
+    if (index === null) return;
+    const dismiss = (event: Event) => {
+      const target = event.target as HTMLElement | null;
+      if (target?.closest("[data-tour-card]")) return;
+      finish();
+    };
+    document.addEventListener("pointerdown", dismiss, true);
+    document.addEventListener("keydown", dismiss, true);
+    return () => {
+      document.removeEventListener("pointerdown", dismiss, true);
+      document.removeEventListener("keydown", dismiss, true);
+    };
+  }, [index, finish]);
 
   useEffect(() => {
     if (index === null) return;
@@ -83,9 +117,12 @@ export function GuidedTour() {
     : { top: "50%", left: "50%", transform: "translate(-50%, -50%)" };
 
   return (
-    <div className="fixed inset-0 z-[60]" role="dialog" aria-modal="true" aria-label="Guided tour">
-      <div className="absolute inset-0 bg-foreground/60" onClick={finish} />
-
+    <div
+      className="pointer-events-none fixed inset-0 z-[60]"
+      role="dialog"
+      aria-modal="false"
+      aria-label="Guided tour"
+    >
       {rect && (
         <div
           className="pointer-events-none absolute rounded-lg ring-4 ring-accent"
@@ -100,7 +137,8 @@ export function GuidedTour() {
       )}
 
       <div
-        className="absolute w-[320px] max-w-[90vw] rounded-xl bg-card p-5 shadow-warm-lg"
+        data-tour-card
+        className="pointer-events-auto absolute w-[320px] max-w-[90vw] rounded-xl bg-card p-5 shadow-warm-lg"
         style={cardStyle}
       >
         <button
