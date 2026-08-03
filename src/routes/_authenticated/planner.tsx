@@ -16,6 +16,7 @@ import {
   ArrowRight,
   RefreshCw,
   Undo2,
+  CheckCheck,
   FileText,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -363,6 +364,7 @@ function Planner() {
   }
 
   const reviewed = Object.keys(handled).length;
+  const pendingCount = drafts.filter((d) => !handled[d.studentId]).length;
 
   return (
     <AppShell
@@ -575,7 +577,7 @@ function Planner() {
                     student={student}
                     draft={draft}
                     editing={editingId === draft.studentId}
-                    regenerating={regeneratingId === draft.studentId}
+                    regenerating={regeneratingIds.includes(draft.studentId)}
                     outcome={handled[draft.studentId]}
                     onEdit={() => setEditingId(draft.studentId)}
                     onStopEditing={() => setEditingId(null)}
