@@ -523,13 +523,49 @@ function Planner() {
               title="Review before saving"
               hint="The original AI output stays on the left. Edit, regenerate or accept each student — nothing is saved until you decide."
             />
-            <div className="mb-4 flex flex-wrap items-center gap-3 rounded-xl bg-muted/60 p-4 text-sm text-muted-foreground">
-              <FileText size={16} aria-hidden="true" />
-              <span>
-                {reviewed} of {drafts.length} reviewed. Every generate, edit, regenerate and accept
-                is written to the audit trail in Settings.
-              </span>
+            <div className="mb-4 flex flex-col gap-3 rounded-xl bg-muted/60 p-4">
+              <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                <FileText size={16} aria-hidden="true" />
+                <span>
+                  {reviewed} of {drafts.length} reviewed
+                  {pendingCount > 0 ? ` · ${pendingCount} still to decide` : " · all decided"}. Every
+                  generate, edit, regenerate and accept is written to the audit trail in Settings.
+                </span>
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={bulkAccept}
+                  disabled={pendingCount === 0 || bulkBusy !== null}
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground hover:bg-primary-light disabled:opacity-60"
+                >
+                  {bulkBusy === "accept" ? (
+                    <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+                  ) : (
+                    <CheckCheck size={16} aria-hidden="true" />
+                  )}
+                  Accept all remaining ({pendingCount})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void bulkRegenerate()}
+                  disabled={pendingCount === 0 || bulkBusy !== null}
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-border bg-background px-4 text-sm font-medium text-foreground hover:bg-muted disabled:opacity-60"
+                >
+                  {bulkBusy === "regenerate" ? (
+                    <Loader2 size={16} className="animate-spin" aria-hidden="true" />
+                  ) : (
+                    <RefreshCw size={16} aria-hidden="true" />
+                  )}
+                  Regenerate all remaining
+                </button>
+                <span className="text-xs text-muted-foreground">
+                  Bulk actions only touch outputs you haven't decided on — handle exceptions
+                  individually below first.
+                </span>
+              </div>
             </div>
+
             <div className="flex flex-col gap-5">
               {drafts.map((draft) => {
                 const student = students.find((s) => s.id === draft.studentId)!;
