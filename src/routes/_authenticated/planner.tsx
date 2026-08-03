@@ -100,7 +100,8 @@ function Planner() {
   const [generating, setGenerating] = useState(false);
   const [drafts, setDrafts] = useState<Draft[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
+  const [regeneratingIds, setRegeneratingIds] = useState<string[]>([]);
+  const [bulkBusy, setBulkBusy] = useState<null | "accept" | "regenerate">(null);
   const [handled, setHandled] = useState<Record<string, "implemented" | "declined" | "saved">>({});
   const [error, setError] = useState<string | null>(null);
 
@@ -223,14 +224,14 @@ function Planner() {
     setGenerating(false);
   }
 
-  async function handleRegenerate(draft: Draft) {
+  async function handleRegenerate(draft: Draft, silent = false) {
     const student = students.find((s) => s.id === draft.studentId);
     if (!student || !topic) return;
-    setRegeneratingId(draft.studentId);
+    setRegeneratingIds((prev) => [...prev, draft.studentId]);
     const body = await generateFor(student);
-    setRegeneratingId(null);
+    setRegeneratingIds((prev) => prev.filter((id) => id !== draft.studentId));
     if ("error" in body) {
-      toast.error(body.error);
+      if (!silent) toast.error(body.error);
       return;
     }
     recordActivity({
