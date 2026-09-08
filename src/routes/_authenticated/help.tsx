@@ -254,6 +254,7 @@ function HelpPage() {
             </Link>
             <Link
               to="/crisis"
+              search={{ student: undefined }}
               className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-border px-5 text-sm font-semibold text-foreground hover:bg-muted"
             >
               <HeartPulse size={18} aria-hidden="true" />
