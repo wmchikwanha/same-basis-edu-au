@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { logGovernance } from "./governance.server";
 import {
   ACTIVITY_EVENTS,
   ACTIVITY_SURFACES,
@@ -34,6 +35,14 @@ export const logActivity = createServerFn({ method: "POST" })
       success: data.success,
     });
     if (error) throw new Error(error.message);
+    await logGovernance(context.supabase, context.userId, {
+      category: "ai",
+      eventType: data.eventType,
+      targetType: data.studentId ? "student" : null,
+      targetId: data.studentId ?? null,
+      summary: data.summary,
+      details: { surface: data.surface, durationMs: data.durationMs ?? null, success: data.success },
+    });
     return { ok: true as const };
   });
 
@@ -43,6 +52,7 @@ export const listActivity = createServerFn({ method: "POST" })
     const { data, error } = await context.supabase
       .from("ai_activity_events")
       .select("*")
+      .eq("user_id", context.userId)
       .order("created_at", { ascending: false })
       .limit(400);
     if (error) throw new Error(error.message);
