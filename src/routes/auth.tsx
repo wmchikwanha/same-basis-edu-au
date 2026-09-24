@@ -48,6 +48,7 @@ function AuthPage() {
     event.preventDefault();
     setBusy(true);
     try {
+      localStorage.removeItem("samebasis.sandboxRole");
       if (mode === "signup") {
         if (!aiConsent) {
           toast.error("Please confirm the AI processing consent to create an account.");

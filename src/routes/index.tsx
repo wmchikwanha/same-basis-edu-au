@@ -1,4 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
+import { toast } from "sonner";
+import { Info, Loader2, GraduationCap, Building2 } from "lucide-react";
+import { enterSandbox, type SandboxRole } from "@/lib/sandbox";
 import {
   ArrowRight,
   ClipboardCheck,
@@ -66,9 +70,9 @@ function Landing() {
           <span className="flex-1 text-base font-semibold text-foreground">{brand.name}</span>
           <Link
             to="/auth"
-            className="inline-flex min-h-[44px] items-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-light"
+            className="text-sm font-medium text-muted-foreground hover:text-foreground"
           >
-            Try the demo
+            Sign in with an account
           </Link>
         </div>
       </header>
@@ -85,26 +89,7 @@ function Landing() {
             {brand.positioning} SameBasis reads the whole child — disability, culture, trauma and
             strengths — and hands you one adjustment you can actually use in the next lesson.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link
-              to="/auth"
-              className="inline-flex min-h-[48px] items-center gap-2 rounded-lg bg-primary px-6 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary-light"
-            >
-              Start free — no verification
-              <ArrowRight size={18} aria-hidden="true" />
-            </Link>
-            <Link
-              to="/auth"
-              className="inline-flex min-h-[48px] items-center rounded-lg border border-input bg-card px-6 text-sm font-semibold text-foreground transition-colors hover:bg-muted"
-            >
-              Sign in
-            </Link>
-          </div>
-          <p className="mt-4 flex items-start gap-2 text-xs text-muted-foreground">
-            <ShieldCheck size={14} className="mt-0.5 shrink-0" aria-hidden="true" />
-            Trial accounts open instantly with a temporary email address. All student data in the
-            trial is synthetic.
-          </p>
+          <RolePicker />
         </section>
 
         <section aria-label="What SameBasis does" className="grid gap-6 pb-16 sm:grid-cols-2">
@@ -137,6 +122,78 @@ function Landing() {
           {footerText}
         </p>
       </footer>
+    </div>
+  );
+}
+
+function RolePicker() {
+  const navigate = useNavigate();
+  const [busy, setBusy] = useState<SandboxRole | null>(null);
+
+  async function choose(role: SandboxRole) {
+    setBusy(role);
+    try {
+      await enterSandbox(role);
+      await navigate({ to: role === "admin" ? "/admin" : "/dashboard", replace: true });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't open the sandbox.");
+      setBusy(null);
+    }
+  }
+
+  const roles = [
+    {
+      role: "teacher" as const,
+      icon: GraduationCap,
+      title: "Enter as Teacher",
+      body: "Your own classroom, pre-populated with six synthetic student profiles. Plan lessons, generate adjustments, message families and log NCCD evidence.",
+    },
+    {
+      role: "admin" as const,
+      icon: Building2,
+      title: "Enter as School Admin",
+      body: "A school-wide overview of NCCD evidence coverage, adjustments by class, data imports and the AI audit trail.",
+    },
+  ];
+
+  return (
+    <div className="mt-8">
+      <h2 className="text-lg font-semibold text-foreground">Choose your role to start</h2>
+      <p className="mt-1 text-sm text-muted-foreground">
+        No sign-up, no email, no verification — a private sandbox opens instantly.
+      </p>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        {roles.map(({ role, icon: Icon, title, body }) => (
+          <button
+            key={role}
+            type="button"
+            disabled={busy !== null}
+            onClick={() => choose(role)}
+            className="flex flex-col items-start gap-3 rounded-xl border border-border bg-card p-6 text-left shadow-warm-sm transition-colors hover:border-primary disabled:opacity-60"
+          >
+            <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary text-primary">
+              {busy === role ? <Loader2 size={20} className="animate-spin" aria-hidden="true" /> : <Icon size={20} aria-hidden="true" />}
+            </span>
+            <span className="flex items-center gap-2 text-lg font-semibold text-foreground">
+              {title} <ArrowRight size={18} aria-hidden="true" />
+            </span>
+            <span className="text-sm leading-relaxed text-muted-foreground">{body}</span>
+          </button>
+        ))}
+      </div>
+      <div className="mt-5 flex gap-3 rounded-lg bg-secondary/60 p-3 text-xs leading-relaxed text-foreground" role="note">
+        <Info size={16} className="mt-0.5 shrink-0 text-primary" aria-hidden="true" />
+        <p>
+          <span className="font-semibold">Privacy note:</span> You can use temporary email
+          addresses, e.g. test@mail.com, for instant testing with no verification steps required.
+          Just note that different account types require separate email addresses.
+        </p>
+      </div>
+      <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+        By entering you consent to AI processing of the synthetic student context, used only when
+        you press Generate. Suggestions are drafts to review, edit or decline. Student profiles are
+        synthetic — never enter real student information.
+      </p>
     </div>
   );
 }

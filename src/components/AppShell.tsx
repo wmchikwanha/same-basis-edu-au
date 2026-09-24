@@ -22,6 +22,8 @@ import { useAppState } from "@/lib/app-state";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { GuidedTour } from "@/components/GuidedTour";
+import { SANDBOX_ROLE_KEY } from "@/lib/sandbox";
+import { Building2 } from "lucide-react";
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -45,10 +47,30 @@ const mobileNavItems = [
 ] as const;
 
 
+const adminNavItems = [
+  { to: "/admin", label: "School Overview", icon: Building2 },
+  navItems[1],
+  navItems[2],
+  navItems[6],
+  navItems[7],
+  navItems[8],
+  navItems[9],
+] as const;
+
+function useRole() {
+  const [role, setRole] = useState<"teacher" | "admin">("teacher");
+  useEffect(() => {
+    setRole(localStorage.getItem(SANDBOX_ROLE_KEY) === "admin" ? "admin" : "teacher");
+  }, []);
+  return role;
+}
+
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
+  const role = useRole();
+  const items = role === "admin" ? adminNavItems : navItems;
   return (
     <nav aria-label="Main" className="flex flex-col gap-1">
-      {navItems.map(({ to, label, icon: Icon }) => (
+      {items.map(({ to, label, icon: Icon }) => (
         <Link
           key={to}
           to={to}
@@ -120,7 +142,8 @@ export function AppShell({
 
   async function signOut() {
     await supabase.auth.signOut();
-    await navigate({ to: "/auth", replace: true });
+    localStorage.removeItem(SANDBOX_ROLE_KEY);
+    await navigate({ to: "/", replace: true });
   }
 
 
