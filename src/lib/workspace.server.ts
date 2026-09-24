@@ -394,7 +394,7 @@ export async function loadWorkspaceForUser(
     supabase.rpc("has_role", { _user_id: userId, _role: "admin" }),
     supabase.rpc("user_school_id", { _user_id: userId }),
   ]);
-  const appRole: "admin" | "teacher" = isAdmin || skipSeed ? "admin" : "teacher";
+  const appRole: "admin" | "teacher" = isAdmin ? "admin" : "teacher";
 
   const { data: existingClasses } = await supabase
     .from("classes")
@@ -403,7 +403,7 @@ export async function loadWorkspaceForUser(
     .limit(1);
 
   // School admins oversee teachers' classes; they don't get a demo class of their own.
-  if (appRole === "teacher" && (!existingClasses || existingClasses.length === 0)) {
+  if (appRole === "teacher" && !skipSeed && (!existingClasses || existingClasses.length === 0)) {
     await seedWorkspace(supabase, userId);
   }
 
