@@ -213,6 +213,78 @@ export type Database = {
         }
         Relationships: []
       }
+      equity_flags: {
+        Row: {
+          category: string
+          created_at: string
+          detector: string
+          excerpt: string
+          id: string
+          phrase: string
+          reason: string
+          resolution_note: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          school_id: string | null
+          severity: string
+          status: string
+          student_id: string | null
+          surface: string
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          detector?: string
+          excerpt?: string
+          id?: string
+          phrase?: string
+          reason?: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          school_id?: string | null
+          severity?: string
+          status?: string
+          student_id?: string | null
+          surface?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          detector?: string
+          excerpt?: string
+          id?: string
+          phrase?: string
+          reason?: string
+          resolution_note?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          school_id?: string | null
+          severity?: string
+          status?: string
+          student_id?: string | null
+          surface?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equity_flags_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "equity_flags_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       evidence_logs: {
         Row: {
           adjustment_id: string | null
@@ -267,6 +339,56 @@ export type Database = {
           },
         ]
       }
+      governance_events: {
+        Row: {
+          actor_id: string
+          actor_name: string
+          category: string
+          created_at: string
+          details: Json
+          event_type: string
+          id: string
+          school_id: string | null
+          summary: string
+          target_id: string | null
+          target_type: string | null
+        }
+        Insert: {
+          actor_id: string
+          actor_name?: string
+          category?: string
+          created_at?: string
+          details?: Json
+          event_type: string
+          id?: string
+          school_id?: string | null
+          summary?: string
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Update: {
+          actor_id?: string
+          actor_name?: string
+          category?: string
+          created_at?: string
+          details?: Json
+          event_type?: string
+          id?: string
+          school_id?: string | null
+          summary?: string
+          target_id?: string | null
+          target_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "governance_events_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           ai_consent: boolean
@@ -306,6 +428,56 @@ export type Database = {
           state?: string
           updated_at?: string
           year_level?: number
+        }
+        Relationships: []
+      }
+      school_members: {
+        Row: {
+          active: boolean
+          created_at: string
+          school_id: string
+          user_id: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          school_id: string
+          user_id: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          school_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "school_members_school_id_fkey"
+            columns: ["school_id"]
+            isOneToOne: false
+            referencedRelation: "schools"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      schools: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
         }
         Relationships: []
       }
@@ -353,15 +525,44 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      is_school_admin_of: {
+        Args: { _admin: string; _target: string }
+        Returns: boolean
+      }
+      user_school_id: { Args: { _user_id: string }; Returns: string }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "teacher"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -488,6 +689,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "teacher"],
+    },
   },
 } as const
