@@ -1,40 +1,32 @@
-## SameBasis — Phase 1
+# Whole-school Admin Panel with Governance, Ethics and Equity Logging
 
-A demo-mode-only build of SameBasis: no sign-in, every visitor lands directly in the pre-populated "Year 8 Science B" classroom with the six synthetic student profiles from your brief.
+## Goal
+Turn the School Admin view into a proper head-of-school console: oversee every teacher, create teacher accounts, manage students across the whole school, and audit AI use with tamper-resistant governance and zero-discrimination logging. It will have more tools than the teacher view, not fewer.
 
-### What Phase 1 delivers
+## What the admin will see (new admin navigation)
 
-**Design system & shell**
-- Full palette from your brief as semantic tokens: Deep Forest Teal `#2D6A4F`, Sage, Warm Amber, Soft Coral, Warm Cream canvas `#FEFAE0`, Dark Forest text, Mint/Terracotta states. Amber focus rings.
-- Inter typography, `rounded-xl` cards, `rounded-lg` buttons, warm subtle shadows, generous `gap-6` spacing, 1.6 body line height, 44px minimum touch targets, WCAG AA contrast.
-- Collapsible sidebar (Dashboard, My Classes, Student Profiles, Lesson Planner, Evidence Log, Help & Info, Settings), top bar with avatar/school/date/notifications, 1280px centred content, bottom tab bar on mobile.
-- `SameBasis | Developed by Walter C | © 2026 All Rights Reserved` footer on every page. All branding pulled from a single config file so the product can be renamed in one place.
+1. **School overview**: whole-school stats across all teachers: classes, students, adjustments, evidence completeness by teacher and by NCCD pillar, AI generations, acceptance rates, and a list of open equity flags.
+2. **Teachers**: a list of every teacher at the school with their classes, student count, evidence completeness and last activity.
+   - **Create teacher account** form (name, email, temporary password, year level). The new teacher can sign in straight away.
+   - Deactivate or reactivate a teacher (their data is kept).
+   - "View as oversight": read-only view of that teacher's classes, adjustments and evidence.
+3. **Students (whole school)**: every student in the school, with filters by teacher, class, NCCD category and level. Admin can add a student, assign or move them to any teacher's class, and bulk-import for the whole school with CSV (the existing import screen, extended with a "teacher email" column).
+4. **Classes**: all classes, with admin able to create a class for any teacher.
+5. **Governance log (append-only)**: every admin and AI action at school level, including account created, student moved, AI output generated/edited/accepted/declined, exports and consent changes. The log cannot be edited or cleared by anyone, admin included. Filters, search and CSV export are the same as the current audit trail.
+6. **Ethics and equity monitor (zero-discrimination)**:
+   - Every AI output is automatically screened before a teacher sees it. The screen looks for deficit or stigmatising language, lowered expectations (for example "exclude from", "simplify the outcome", "separate room"), cultural stereotyping, and adjustments that change the curriculum outcome instead of access. Anything flagged is logged with the phrase and reason, and the teacher sees a warning on that output.
+   - **Equity dashboard**: compares adjustment volume, acceptance and decline rates, and evidence coverage across NCCD categories, CALD/EAL-D and trauma-informed groups, so the head can spot any group being under-served or treated differently.
+   - The admin can review each flag and resolve it with a note (for example "reviewed, appropriate" or "teacher followed up"). Resolutions go into the governance log.
+7. **Consent register**: which teachers have given or withdrawn AI consent, and when.
 
-**Dashboard**
-- Welcome card, quick stats (students, NCCD profiles, adjustments this week, evidence completeness %), today's classes, gentle 10-week NCCD reminders, recent activity feed.
+## Sandbox behaviour
+"Enter as School Admin" creates a private sandbox school containing the admin plus three synthetic teachers, each with a seeded class of students, adjustments, evidence and a few AI events (including one equity flag to demonstrate review). The admin panel is full from the first click. "Enter as Teacher" works as it does now. The two sandboxes stay isolated from each other.
 
-**Class roster**
-- Student cards with initials avatars, colour-coded NCCD level badges (QDTP grey / Supplementary blue / Substantial amber / Extensive terracotta), CALD indicator. Badges pair colour with text so colour is never the only signal.
-- "Generate Adjustments for This Lesson" entry point.
-
-**Student profile drawer** (slide-in from right; full-screen on mobile)
-- Identity, Needs, Context (trauma flags, triggers, calming strategies, family communication), Strengths in green, IEP goals, action buttons.
-
-**Lesson Planner / Adjustment Generator (the core)**
-- Step 1 select class + curriculum topic (8 Year 8 Science topics pre-loaded) + optional activity description.
-- Step 2 review/toggle students.
-- Step 3 generate, with the warm per-student loading state ("Consulting the evidence base for Aisha…").
-- Step 4 one card per student: the adjustment, UDL benefit, cultural note, trauma note, rationale, NCCD pillar/level tags, and Implement / Modify / Decline / Save actions. Every output editable before implementing — nothing auto-implements.
-- Step 5 implementing writes an adjustment record plus an evidence log entry with timestamp and optional teacher reflection.
-
-**AI**
-- Lovable Cloud enabled so the AI Gateway (Gemini 2.5 Flash) can be called from a server function using your exact prompt structure, rules, and JSON output contract. The API key stays server-side.
-
-### Technical notes
-- Demo data (class, 6 students, curriculum topics) ships as seeded app data; generated adjustments and evidence logs persist in the browser for the session so the demo flow is repeatable and self-contained. No accounts, no per-user tables, nothing to sign up for — an evaluator opens the link and is immediately inside the app.
-- The AI call runs through a TanStack server function; the JSON response is validated before rendering, with a graceful fallback if a field is missing.
-- Routes: `/` (dashboard), `/classes`, `/classes/$classId`, `/students`, `/planner`, `/evidence`, `/help`, `/settings` — each with its own page metadata.
-- Accessibility: keyboard navigable, ARIA labels, alt text, `prefers-reduced-motion` respected.
-
-### Phase 2 (after you review Phase 1)
-Moment-of-Crisis guidance (including "what NOT to do" and escalation criteria), Family Communication generator, full Evidence Log calendar with pillar filtering and CSV/PDF export, the complete 9-section Help & Info centre with legal framing and disclaimers, and Settings.
+## Technical details
+- New tables (with GRANTs and RLS): `schools`, `school_members` (user_id, school_id, active), `user_roles` (separate table, `app_role` enum: admin/teacher), `governance_events` (append-only: INSERT and SELECT policies only, no UPDATE/DELETE; revoke update/delete), `equity_flags` (output id, category, phrase, severity, status, resolution note, resolved_by).
+- `has_role()` and `is_school_admin_of(user_id)` security-definer functions. Existing tables get extra SELECT/UPDATE policies so a school admin can read and manage rows owned by teachers in their school. The existing owner policies stay unchanged.
+- Admin server functions in `src/lib/admin.functions.ts`, using `requireSupabaseAuth` and a `has_role` check through the user client. Teacher account creation uses the service-role client, loaded inside the handler only after the admin check passes, and writes to the governance log.
+- Equity screen: `src/lib/equity.server.ts`. It runs a deterministic rule-based lexicon plus a structured AI check (Lovable AI) on every planner, crisis and family output, and records flags server-side.
+- Admin role comes from the database, not localStorage. Admin routes are placed under an admin gate that checks the role on the server.
+- New routes: `/admin` (overview), `/admin/teachers`, `/admin/teachers/$teacherId`, `/admin/students`, `/admin/governance`, `/admin/equity`. AppShell shows admin navigation only to users who hold the admin role.
+- The technical and audit documentation will be updated with the new controls.
