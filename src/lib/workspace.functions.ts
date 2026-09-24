@@ -7,6 +7,7 @@ import {
   loadWorkspaceForUser,
   resetWorkspaceForUser,
 } from "./workspace.server";
+import { logGovernance } from "./governance.server";
 import type { AdjustmentRecord, EvidenceLog } from "./demo-data";
 import type { Database } from "@/integrations/supabase/types";
 
@@ -46,7 +47,10 @@ export const loadWorkspace = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     const email = (context.claims.email as string | undefined) ?? "";
     const fallbackName = email ? email.split("@")[0] : "Teacher";
-    return loadWorkspaceForUser(context.supabase, context.userId, fallbackName);
+    const meta = (context.claims.user_metadata ?? {}) as { sandbox_role?: string };
+    // Sandbox admins: skip the demo-class seed while their school is being set up.
+    const skipSeed = meta.sandbox_role === "admin";
+    return loadWorkspaceForUser(context.supabase, context.userId, fallbackName, skipSeed);
   });
 
 export const saveAdjustment = createServerFn({ method: "POST" })
@@ -113,6 +117,13 @@ export const updateProfile = createServerFn({ method: "POST" })
         .from("profiles")
         .insert({ id: context.userId, full_name: email ? email.split("@")[0] : "Teacher", ...patch });
       if (insertError) throw new Error(insertError.message);
+    }
+    if (data.aiConsent !== undefined) {
+      await logGovernance(context.supabase, context.userId, {
+        category: "consent",
+        eventType: data.aiConsent ? "consent_given" : "consent_withdrawn",
+        summary: data.aiConsent ? "AI processing consent given." : "AI processing consent withdrawn.",
+      });
     }
     return { ok: true as const };
   });

@@ -28,6 +28,8 @@ export interface WorkspacePayload {
   topics: CurriculumTopic[];
   adjustments: AdjustmentRecord[];
   evidenceLogs: EvidenceLog[];
+  appRole: "admin" | "teacher";
+  schoolId: string | null;
 }
 
 function isoDaysAgo(days: number): string {
@@ -220,7 +222,7 @@ const SEED_EVIDENCE: Array<{
   },
 ];
 
-async function seedWorkspace(supabase: DB, userId: string): Promise<void> {
+export async function seedWorkspace(supabase: DB, userId: string): Promise<void> {
   const { data: classRow, error: classError } = await supabase
     .from("classes")
     .insert({
@@ -384,24 +386,33 @@ export async function loadWorkspaceForUser(
   supabase: DB,
   userId: string,
   fallbackName: string,
+  skipSeed = false,
 ): Promise<WorkspacePayload> {
   const profile = await ensureProfile(supabase, userId, fallbackName);
 
+  const [{ data: isAdmin }, { data: schoolId }] = await Promise.all([
+    supabase.rpc("has_role", { _user_id: userId, _role: "admin" }),
+    supabase.rpc("user_school_id", { _user_id: userId }),
+  ]);
+  const appRole: "admin" | "teacher" = isAdmin || skipSeed ? "admin" : "teacher";
+
   const { data: existingClasses } = await supabase
     .from("classes")
-    .select("*")
-    .order("created_at", { ascending: true });
+    .select("id")
+    .eq("user_id", userId)
+    .limit(1);
 
-  if (!existingClasses || existingClasses.length === 0) {
+  // School admins oversee teachers' classes; they don't get a demo class of their own.
+  if (appRole === "teacher" && (!existingClasses || existingClasses.length === 0)) {
     await seedWorkspace(supabase, userId);
   }
 
   const [classes, students, topics, adjustments, evidenceLogs] = await Promise.all([
-    supabase.from("classes").select("*").order("created_at", { ascending: true }),
-    supabase.from("students").select("*").order("sort_order", { ascending: true }),
-    supabase.from("curriculum_topics").select("*").order("sort_order", { ascending: true }),
-    supabase.from("adjustments").select("*").order("created_at", { ascending: false }),
-    supabase.from("evidence_logs").select("*").order("created_at", { ascending: false }),
+    supabase.from("classes").select("*").eq("user_id", userId).order("created_at", { ascending: true }),
+    supabase.from("students").select("*").eq("user_id", userId).order("sort_order", { ascending: true }),
+    supabase.from("curriculum_topics").select("*").eq("user_id", userId).order("sort_order", { ascending: true }),
+    supabase.from("adjustments").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
+    supabase.from("evidence_logs").select("*").eq("user_id", userId).order("created_at", { ascending: false }),
   ]);
 
   return {
@@ -411,6 +422,8 @@ export async function loadWorkspaceForUser(
     topics: (topics.data ?? []).map(mapTopic),
     adjustments: (adjustments.data ?? []).map(mapAdjustment),
     evidenceLogs: (evidenceLogs.data ?? []).map(mapEvidence),
+    appRole,
+    schoolId: (schoolId as string | null) ?? null,
   };
 }
 
