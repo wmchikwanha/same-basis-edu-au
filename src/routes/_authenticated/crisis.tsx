@@ -141,6 +141,12 @@ function CrisisPage() {
         setting,
       },
     });
+    if (res.ok && "equityFlags" in res && res.equityFlags?.length) {
+      toast.warning(
+        `Equity check: ${res.equityFlags.map((f) => f.reason).join(" ")} Please review before using. Logged for school review.`,
+        { duration: 12000 },
+      );
+    }
     if (res.ok) setGuidance(res.result);
     else setError(res.error);
     setLoading(false);
