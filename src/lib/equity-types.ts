@@ -21,3 +21,10 @@ export const EQUITY_LABELS: Record<EquityCategory, string> = {
   "stigmatising-language": "Stigmatising language",
   "cultural-stereotyping": "Cultural stereotyping",
 };
+
+export function flattenText(value: unknown): string[] {
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) return value.flatMap(flattenText);
+  if (value && typeof value === "object") return Object.values(value).flatMap(flattenText);
+  return [];
+}
