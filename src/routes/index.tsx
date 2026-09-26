@@ -1,3 +1,4 @@
+import { useAppState } from "@/lib/app-state";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -128,12 +129,15 @@ function Landing() {
 
 function RolePicker() {
   const navigate = useNavigate();
+  const { refresh } = useAppState();
   const [busy, setBusy] = useState<SandboxRole | null>(null);
 
   async function choose(role: SandboxRole) {
     setBusy(role);
     try {
       await enterSandbox(role);
+      await refresh();
+      await refresh();
       await navigate({ to: role === "admin" ? "/admin" : "/dashboard", replace: true });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't open the sandbox.");
@@ -152,7 +156,7 @@ function RolePicker() {
       role: "admin" as const,
       icon: Building2,
       title: "Enter as School Admin",
-      body: "A school-wide overview of NCCD evidence coverage, adjustments by class, data imports and the AI audit trail.",
+      body: "Head-of-school console: oversee three synthetic teachers, create teacher accounts, manage students across the whole school, and audit AI use with an append-only governance log and zero-discrimination equity monitoring.",
     },
   ];
 
