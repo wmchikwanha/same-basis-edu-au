@@ -140,6 +140,7 @@ function Planner() {
         activityDescription: assessmentContext
           ? `${activity}${activity ? ". " : ""}Assessment context: ${assessmentContext}`
           : activity,
+        studentId: student.id,
       },
     }).catch((err: unknown) => ({
       ok: false as const,
@@ -159,6 +160,15 @@ function Planner() {
         success: false,
       });
       return { error: res.error };
+    }
+
+    if ("equityFlags" in res && res.equityFlags?.length) {
+      toast.warning(
+        `Equity check on ${student.preferredName}'s output: ${res.equityFlags
+          .map((f) => f.reason)
+          .join(" ")} Please review or regenerate before accepting. This is logged for school review.`,
+        { duration: 12000 },
+      );
     }
 
     recordActivity({

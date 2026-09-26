@@ -38,6 +38,7 @@ interface AppState {
   topics: CurriculumTopic[];
   adjustments: AdjustmentRecord[];
   evidenceLogs: EvidenceLog[];
+  appRole: "admin" | "teacher";
   hydrated: boolean;
   loading: boolean;
   addAdjustment: (record: AdjustmentRecord) => void;
@@ -62,6 +63,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
   const [topics, setTopics] = useState<CurriculumTopic[]>([]);
   const [adjustments, setAdjustments] = useState<AdjustmentRecord[]>([]);
   const [evidenceLogs, setEvidenceLogs] = useState<EvidenceLog[]>([]);
+  const [appRole, setAppRole] = useState<"admin" | "teacher">("teacher");
   const [hydrated, setHydrated] = useState(false);
   const [loading, setLoading] = useState(false);
   const inFlight = useRef<Promise<void> | null>(null);
@@ -74,6 +76,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setTopics(payload.topics);
       setAdjustments(payload.adjustments);
       setEvidenceLogs(payload.evidenceLogs);
+      setAppRole(payload.appRole);
     },
     [],
   );
@@ -87,6 +90,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       setTopics([]);
       setAdjustments([]);
       setEvidenceLogs([]);
+      setAppRole("teacher");
       setHydrated(true);
       return;
     }
@@ -193,6 +197,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       topics,
       adjustments,
       evidenceLogs,
+      appRole,
       hydrated,
       loading,
       addAdjustment,
@@ -209,6 +214,7 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
       topics,
       adjustments,
       evidenceLogs,
+      appRole,
       hydrated,
       loading,
       addAdjustment,

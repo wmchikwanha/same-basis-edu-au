@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { generateText, Output, NoObjectGeneratedError } from "ai";
 import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { screenAndRecord } from "./equity.server";
 import {
   ADJUSTMENT_SYSTEM_PROMPT,
   buildAdjustmentPrompt,
@@ -25,6 +27,7 @@ const AdjustmentInput = z.object({
   topic: z.string(),
   topicDescription: z.string(),
   activityDescription: z.string(),
+  studentId: z.string().uuid().nullable().optional(),
 });
 
 const AdjustmentOutput = z.object({
@@ -36,8 +39,9 @@ const AdjustmentOutput = z.object({
 });
 
 export const generateAdjustment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => AdjustmentInput.parse(input))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
     const key = process.env.LOVABLE_API_KEY;
     if (!key) {
       return {
@@ -57,12 +61,21 @@ export const generateAdjustment = createServerFn({ method: "POST" })
         providerOptions: { lovable: { reasoningEffort: "none" } },
       });
 
-      return { ok: true as const, result: output };
+      const equityFlags = await screenAndRecord(context.supabase, context.userId, {
+        surface: "planner",
+        studentId: data.studentId ?? null,
+        texts: Object.values(output as Record<string, string>),
+      });
+      return { ok: true as const, result: output, equityFlags };
     } catch (error) {
       if (NoObjectGeneratedError.isInstance(error) && error.text) {
         try {
           const cleaned = error.text.replace(/^```(?:json)?/i, "").replace(/```$/, "");
-          return { ok: true as const, result: AdjustmentOutput.parse(JSON.parse(cleaned)) };
+          return {
+            ok: true as const,
+            result: AdjustmentOutput.parse(JSON.parse(cleaned)),
+            equityFlags: [] as import("./equity-types").EquityFlagDraft[],
+          };
         } catch {
           /* fall through to the error response */
         }

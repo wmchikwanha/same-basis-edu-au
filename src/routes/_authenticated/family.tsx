@@ -108,6 +108,12 @@ function FamilyPage() {
         schoolName: demoUser.schoolName,
       },
     });
+    if (res.ok && "equityFlags" in res && res.equityFlags?.length) {
+      toast.warning(
+        `Equity check: ${res.equityFlags.map((f) => f.reason).join(" ")} Please review before using. Logged for school review.`,
+        { duration: 12000 },
+      );
+    }
     if (res.ok) {
       setMessage(res.result);
       setBody(res.result.message_body);
