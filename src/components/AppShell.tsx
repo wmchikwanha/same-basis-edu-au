@@ -23,7 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { GuidedTour } from "@/components/GuidedTour";
 import { SANDBOX_ROLE_KEY } from "@/lib/sandbox";
-import { Building2 } from "lucide-react";
+import { Building2, GraduationCap, School, ScrollText, Scale } from "lucide-react";
 
 const navItems = [
   { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -49,20 +49,17 @@ const mobileNavItems = [
 
 const adminNavItems = [
   { to: "/admin", label: "School Overview", icon: Building2 },
-  navItems[1],
-  navItems[2],
-  navItems[6],
+  { to: "/admin/teachers", label: "Teachers", icon: GraduationCap },
+  { to: "/admin/students", label: "Whole-school Students", icon: School },
+  { to: "/admin/governance", label: "Governance Log", icon: ScrollText },
+  { to: "/admin/equity", label: "Ethics & Equity", icon: Scale },
   navItems[7],
   navItems[8],
   navItems[9],
 ] as const;
 
 function useRole() {
-  const [role, setRole] = useState<"teacher" | "admin">("teacher");
-  useEffect(() => {
-    setRole(localStorage.getItem(SANDBOX_ROLE_KEY) === "admin" ? "admin" : "teacher");
-  }, []);
-  return role;
+  return useAppState().appRole;
 }
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
@@ -77,6 +74,7 @@ function NavList({ onNavigate }: { onNavigate?: () => void }) {
           onClick={onNavigate}
           data-tour={`nav-${to}`}
           className="flex min-h-[44px] items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/85 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          activeOptions={{ exact: to === "/admin" }}
           activeProps={{
             className: "bg-sidebar-accent text-sidebar-accent-foreground",
             "aria-current": "page",
@@ -261,7 +259,8 @@ export function AppShell({
                 to={to}
                 
                 className="flex min-h-[56px] flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-medium text-muted-foreground"
-                activeProps={{ className: "text-primary", "aria-current": "page" }}
+                activeOptions={{ exact: to === "/admin" }}
+          activeProps={{ className: "text-primary", "aria-current": "page" }}
               >
                 <Icon size={20} aria-hidden="true" />
                 <span className="truncate">{label.replace("Student ", "")}</span>
