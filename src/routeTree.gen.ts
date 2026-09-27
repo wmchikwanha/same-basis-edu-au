@@ -26,6 +26,9 @@ import { Route as AuthenticatedClassesIndexRouteImport } from './routes/_authent
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedClassesClassIdRouteImport } from './routes/_authenticated/classes.$classId'
 import { Route as AuthenticatedAdminTeachersRouteImport } from './routes/_authenticated/admin.teachers'
+import { Route as AuthenticatedAdminStudentsRouteImport } from './routes/_authenticated/admin.students'
+import { Route as AuthenticatedAdminGovernanceRouteImport } from './routes/_authenticated/admin.governance'
+import { Route as AuthenticatedAdminEquityRouteImport } from './routes/_authenticated/admin.equity'
 import { Route as AuthenticatedAdminTeachersTeacherIdRouteImport } from './routes/_authenticated/admin.teachers.$teacherId'
 
 const AuthRoute = AuthRouteImport.update({
@@ -115,6 +118,24 @@ const AuthenticatedAdminTeachersRoute =
     path: '/teachers',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminStudentsRoute =
+  AuthenticatedAdminStudentsRouteImport.update({
+    id: '/students',
+    path: '/students',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminGovernanceRoute =
+  AuthenticatedAdminGovernanceRouteImport.update({
+    id: '/governance',
+    path: '/governance',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminEquityRoute =
+  AuthenticatedAdminEquityRouteImport.update({
+    id: '/equity',
+    path: '/equity',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminTeachersTeacherIdRoute =
   AuthenticatedAdminTeachersTeacherIdRouteImport.update({
     id: '/$teacherId',
@@ -135,6 +156,9 @@ export interface FileRoutesByFullPath {
   '/planner': typeof AuthenticatedPlannerRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/students': typeof AuthenticatedStudentsRoute
+  '/admin/equity': typeof AuthenticatedAdminEquityRoute
+  '/admin/governance': typeof AuthenticatedAdminGovernanceRoute
+  '/admin/students': typeof AuthenticatedAdminStudentsRoute
   '/admin/teachers': typeof AuthenticatedAdminTeachersRouteWithChildren
   '/classes/$classId': typeof AuthenticatedClassesClassIdRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
@@ -153,6 +177,9 @@ export interface FileRoutesByTo {
   '/planner': typeof AuthenticatedPlannerRoute
   '/settings': typeof AuthenticatedSettingsRoute
   '/students': typeof AuthenticatedStudentsRoute
+  '/admin/equity': typeof AuthenticatedAdminEquityRoute
+  '/admin/governance': typeof AuthenticatedAdminGovernanceRoute
+  '/admin/students': typeof AuthenticatedAdminStudentsRoute
   '/admin/teachers': typeof AuthenticatedAdminTeachersRouteWithChildren
   '/classes/$classId': typeof AuthenticatedClassesClassIdRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
@@ -174,6 +201,9 @@ export interface FileRoutesById {
   '/_authenticated/planner': typeof AuthenticatedPlannerRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/students': typeof AuthenticatedStudentsRoute
+  '/_authenticated/admin/equity': typeof AuthenticatedAdminEquityRoute
+  '/_authenticated/admin/governance': typeof AuthenticatedAdminGovernanceRoute
+  '/_authenticated/admin/students': typeof AuthenticatedAdminStudentsRoute
   '/_authenticated/admin/teachers': typeof AuthenticatedAdminTeachersRouteWithChildren
   '/_authenticated/classes/$classId': typeof AuthenticatedClassesClassIdRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
@@ -195,6 +225,9 @@ export interface FileRouteTypes {
     | '/planner'
     | '/settings'
     | '/students'
+    | '/admin/equity'
+    | '/admin/governance'
+    | '/admin/students'
     | '/admin/teachers'
     | '/classes/$classId'
     | '/admin/'
@@ -213,6 +246,9 @@ export interface FileRouteTypes {
     | '/planner'
     | '/settings'
     | '/students'
+    | '/admin/equity'
+    | '/admin/governance'
+    | '/admin/students'
     | '/admin/teachers'
     | '/classes/$classId'
     | '/admin'
@@ -233,6 +269,9 @@ export interface FileRouteTypes {
     | '/_authenticated/planner'
     | '/_authenticated/settings'
     | '/_authenticated/students'
+    | '/_authenticated/admin/equity'
+    | '/_authenticated/admin/governance'
+    | '/_authenticated/admin/students'
     | '/_authenticated/admin/teachers'
     | '/_authenticated/classes/$classId'
     | '/_authenticated/admin/'
@@ -367,6 +406,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminTeachersRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/students': {
+      id: '/_authenticated/admin/students'
+      path: '/students'
+      fullPath: '/admin/students'
+      preLoaderRoute: typeof AuthenticatedAdminStudentsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/governance': {
+      id: '/_authenticated/admin/governance'
+      path: '/governance'
+      fullPath: '/admin/governance'
+      preLoaderRoute: typeof AuthenticatedAdminGovernanceRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/equity': {
+      id: '/_authenticated/admin/equity'
+      path: '/equity'
+      fullPath: '/admin/equity'
+      preLoaderRoute: typeof AuthenticatedAdminEquityRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/teachers/$teacherId': {
       id: '/_authenticated/admin/teachers/$teacherId'
       path: '/$teacherId'
@@ -393,11 +453,17 @@ const AuthenticatedAdminTeachersRouteWithChildren =
   )
 
 interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminEquityRoute: typeof AuthenticatedAdminEquityRoute
+  AuthenticatedAdminGovernanceRoute: typeof AuthenticatedAdminGovernanceRoute
+  AuthenticatedAdminStudentsRoute: typeof AuthenticatedAdminStudentsRoute
   AuthenticatedAdminTeachersRoute: typeof AuthenticatedAdminTeachersRouteWithChildren
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminEquityRoute: AuthenticatedAdminEquityRoute,
+  AuthenticatedAdminGovernanceRoute: AuthenticatedAdminGovernanceRoute,
+  AuthenticatedAdminStudentsRoute: AuthenticatedAdminStudentsRoute,
   AuthenticatedAdminTeachersRoute: AuthenticatedAdminTeachersRouteWithChildren,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
 }
