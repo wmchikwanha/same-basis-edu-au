@@ -7,6 +7,7 @@ import { AppShell } from "@/components/AppShell";
 import { resolveEquityFlag } from "@/lib/admin.functions";
 import { card, inputCls, primaryBtn, secondaryBtn, useSchool } from "@/lib/use-school";
 import { EQUITY_LABELS, type EquityCategory } from "@/lib/equity-types";
+import { hasTrauma, isCald } from "@/lib/demo-data";
 import type { SchoolData } from "@/lib/admin-types";
 
 export const Route = createFileRoute("/_authenticated/admin/equity")({
@@ -28,8 +29,8 @@ type Student = SchoolData["students"][number];
 function groupsFor(students: Student[]) {
   const groups: { label: string; test: (s: Student) => boolean }[] = [
     ...["Cognitive", "Social-Emotional", "Physical", "Sensory"].map((c) => ({ label: `NCCD: ${c}`, test: (s: Student) => s.profile.nccdCategory === c })),
-    { label: "CALD / EAL-D", test: (s) => Boolean(s.profile.culturalBackground || s.profile.ealdLevel) },
-    { label: "Trauma-informed support", test: (s) => Boolean(s.profile.traumaFlags) },
+    { label: "CALD / EAL-D", test: (s) => isCald(s as never) },
+    { label: "Trauma-informed support", test: (s) => hasTrauma(s as never) },
     { label: "All students", test: () => true },
   ];
   return groups.map((g) => ({ ...g, members: students.filter(g.test) }));
