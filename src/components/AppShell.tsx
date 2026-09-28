@@ -259,7 +259,6 @@ export function AppShell({
                 to={to}
                 
                 className="flex min-h-[56px] flex-col items-center justify-center gap-1 px-1 py-2 text-[10px] font-medium text-muted-foreground"
-                activeOptions={{ exact: to === "/admin" }}
           activeProps={{ className: "text-primary", "aria-current": "page" }}
               >
                 <Icon size={20} aria-hidden="true" />

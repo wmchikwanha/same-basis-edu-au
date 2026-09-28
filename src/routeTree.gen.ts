@@ -29,6 +29,7 @@ import { Route as AuthenticatedAdminTeachersRouteImport } from './routes/_authen
 import { Route as AuthenticatedAdminStudentsRouteImport } from './routes/_authenticated/admin.students'
 import { Route as AuthenticatedAdminGovernanceRouteImport } from './routes/_authenticated/admin.governance'
 import { Route as AuthenticatedAdminEquityRouteImport } from './routes/_authenticated/admin.equity'
+import { Route as AuthenticatedAdminTeachersIndexRouteImport } from './routes/_authenticated/admin.teachers.index'
 import { Route as AuthenticatedAdminTeachersTeacherIdRouteImport } from './routes/_authenticated/admin.teachers.$teacherId'
 
 const AuthRoute = AuthRouteImport.update({
@@ -136,6 +137,12 @@ const AuthenticatedAdminEquityRoute =
     path: '/equity',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminTeachersIndexRoute =
+  AuthenticatedAdminTeachersIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AuthenticatedAdminTeachersRoute,
+  } as any)
 const AuthenticatedAdminTeachersTeacherIdRoute =
   AuthenticatedAdminTeachersTeacherIdRouteImport.update({
     id: '/$teacherId',
@@ -164,6 +171,7 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/classes/': typeof AuthenticatedClassesIndexRoute
   '/admin/teachers/$teacherId': typeof AuthenticatedAdminTeachersTeacherIdRoute
+  '/admin/teachers/': typeof AuthenticatedAdminTeachersIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -180,11 +188,11 @@ export interface FileRoutesByTo {
   '/admin/equity': typeof AuthenticatedAdminEquityRoute
   '/admin/governance': typeof AuthenticatedAdminGovernanceRoute
   '/admin/students': typeof AuthenticatedAdminStudentsRoute
-  '/admin/teachers': typeof AuthenticatedAdminTeachersRouteWithChildren
   '/classes/$classId': typeof AuthenticatedClassesClassIdRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/classes': typeof AuthenticatedClassesIndexRoute
   '/admin/teachers/$teacherId': typeof AuthenticatedAdminTeachersTeacherIdRoute
+  '/admin/teachers': typeof AuthenticatedAdminTeachersIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -209,6 +217,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/classes/': typeof AuthenticatedClassesIndexRoute
   '/_authenticated/admin/teachers/$teacherId': typeof AuthenticatedAdminTeachersTeacherIdRoute
+  '/_authenticated/admin/teachers/': typeof AuthenticatedAdminTeachersIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -233,6 +242,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/classes/'
     | '/admin/teachers/$teacherId'
+    | '/admin/teachers/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -249,11 +259,11 @@ export interface FileRouteTypes {
     | '/admin/equity'
     | '/admin/governance'
     | '/admin/students'
-    | '/admin/teachers'
     | '/classes/$classId'
     | '/admin'
     | '/classes'
     | '/admin/teachers/$teacherId'
+    | '/admin/teachers'
   id:
     | '__root__'
     | '/'
@@ -277,6 +287,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/'
     | '/_authenticated/classes/'
     | '/_authenticated/admin/teachers/$teacherId'
+    | '/_authenticated/admin/teachers/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -427,6 +438,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminEquityRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/teachers/': {
+      id: '/_authenticated/admin/teachers/'
+      path: '/'
+      fullPath: '/admin/teachers/'
+      preLoaderRoute: typeof AuthenticatedAdminTeachersIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminTeachersRoute
+    }
     '/_authenticated/admin/teachers/$teacherId': {
       id: '/_authenticated/admin/teachers/$teacherId'
       path: '/$teacherId'
@@ -439,12 +457,14 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedAdminTeachersRouteChildren {
   AuthenticatedAdminTeachersTeacherIdRoute: typeof AuthenticatedAdminTeachersTeacherIdRoute
+  AuthenticatedAdminTeachersIndexRoute: typeof AuthenticatedAdminTeachersIndexRoute
 }
 
 const AuthenticatedAdminTeachersRouteChildren: AuthenticatedAdminTeachersRouteChildren =
   {
     AuthenticatedAdminTeachersTeacherIdRoute:
       AuthenticatedAdminTeachersTeacherIdRoute,
+    AuthenticatedAdminTeachersIndexRoute: AuthenticatedAdminTeachersIndexRoute,
   }
 
 const AuthenticatedAdminTeachersRouteWithChildren =
