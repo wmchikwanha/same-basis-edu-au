@@ -29,7 +29,7 @@ export async function enterSandbox(role: SandboxRole) {
   }
   sessionStorage.setItem(PENDING_AI_CONSENT_KEY, "1");
   localStorage.setItem(SANDBOX_ROLE_KEY, role);
-  if (role === "admin") await setupSandboxSchool();
+  if (role === "admin") await setupSandboxSchool({ data: { defer: true } });
 }
 
 export function useSandboxRoleValue(): SandboxRole {

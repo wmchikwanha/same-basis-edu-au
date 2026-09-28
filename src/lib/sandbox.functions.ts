@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { seedWorkspace } from "./workspace.server";
 
@@ -52,7 +53,8 @@ const TEACHERS = [
  */
 export const setupSandboxSchool = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((input: unknown) => z.object({ defer: z.boolean().default(false) }).parse(input))
+  .handler(async ({ context, data }) => {
     const email = String(context.claims.email ?? "");
     if (!SANDBOX_ADMIN.test(email)) throw new Error("Not a sandbox admin account.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -61,27 +63,39 @@ export const setupSandboxSchool = createServerFn({ method: "POST" })
       .select("school_id")
       .eq("user_id", context.userId)
       .maybeSingle();
-    if (existing) return { ok: true as const, schoolId: existing.school_id };
+    const { data: members } = existing
+      ? await supabaseAdmin.from("school_members").select("user_id").eq("school_id", existing.school_id)
+      : { data: null };
+    if (existing && (data.defer || (members?.length ?? 0) > 1)) {
+      return { ok: true as const, schoolId: existing.school_id };
+    }
 
     const adminId = context.userId;
     const schoolName = "Main Stream High School (Sandbox)";
-    const { data: school, error } = await supabaseAdmin
-      .from("schools")
-      .insert({ name: schoolName, created_by: adminId })
-      .select("id")
-      .single();
-    if (error || !school) throw new Error("Could not create the sandbox school.");
-
-    await supabaseAdmin.from("school_members").insert({ user_id: adminId, school_id: school.id });
-    await supabaseAdmin.from("user_roles").insert({ user_id: adminId, role: "admin" });
-    await supabaseAdmin.from("profiles").upsert({
-      id: adminId,
-      full_name: "Sandbox Head of School",
-      role: "Principal / Head of School",
-      school_name: schoolName,
-      ai_consent: true,
-      ai_consent_at: new Date().toISOString(),
-    });
+    let schoolId = existing?.school_id;
+    if (!schoolId) {
+      const { data: createdSchool, error } = await supabaseAdmin
+        .from("schools")
+        .insert({ name: schoolName, created_by: adminId })
+        .select("id")
+        .single();
+      if (error || !createdSchool) throw new Error("Could not create the sandbox school.");
+      schoolId = createdSchool.id;
+      await Promise.all([
+        supabaseAdmin.from("school_members").insert({ user_id: adminId, school_id: schoolId }),
+        supabaseAdmin.from("user_roles").insert({ user_id: adminId, role: "admin" }),
+        supabaseAdmin.from("profiles").upsert({
+          id: adminId,
+          full_name: "Sandbox Head of School",
+          role: "Principal / Head of School",
+          school_name: schoolName,
+          ai_consent: true,
+          ai_consent_at: new Date().toISOString(),
+        }),
+      ]);
+    }
+    const school = { id: schoolId };
+    if (data.defer) return { ok: true as const, schoolId };
 
     const gov: Array<Record<string, unknown>> = [];
     const suffix = email.slice(6, 14);
