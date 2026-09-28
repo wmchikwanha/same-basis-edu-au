@@ -1,4 +1,3 @@
-import { useAppState } from "@/lib/app-state";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -129,15 +128,15 @@ function Landing() {
 
 function RolePicker() {
   const navigate = useNavigate();
-  const { refresh } = useAppState();
   const [busy, setBusy] = useState<SandboxRole | null>(null);
 
   async function choose(role: SandboxRole) {
     setBusy(role);
     try {
       await enterSandbox(role);
-      await refresh();
-      await refresh();
+      // AppStateProvider refreshes in response to SIGNED_IN. Do not make the
+      // user wait for another (or, previously, two) complete workspace loads
+      // before the destination route can render.
       await navigate({ to: role === "admin" ? "/admin" : "/dashboard", replace: true });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't open the sandbox.");

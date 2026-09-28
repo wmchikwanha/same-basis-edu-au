@@ -86,7 +86,7 @@ export const setupSandboxSchool = createServerFn({ method: "POST" })
     const gov: Array<Record<string, unknown>> = [];
     const suffix = email.slice(6, 14);
 
-    for (const [index, t] of TEACHERS.entries()) {
+    await Promise.all(TEACHERS.map(async (t, index) => {
       const { data: created } = await supabaseAdmin.auth.admin.createUser({
         email: `teacher${index + 1}-${suffix}@samebasis-sandbox.test`,
         password: crypto.randomUUID(),
@@ -94,7 +94,7 @@ export const setupSandboxSchool = createServerFn({ method: "POST" })
         user_metadata: { full_name: t.fullName },
       });
       const tid = created.user?.id;
-      if (!tid) continue;
+      if (!tid) return;
       await supabaseAdmin.from("school_members").insert({ user_id: tid, school_id: school.id });
       await supabaseAdmin.from("user_roles").insert({ user_id: tid, role: "teacher" });
       await supabaseAdmin.from("profiles").upsert({
@@ -165,7 +165,7 @@ export const setupSandboxSchool = createServerFn({ method: "POST" })
         });
         gov.push({ school_id: school.id, actor_id: tid, actor_name: t.fullName, category: "equity", event_type: "equity_flag_raised", target_type: "student", target_id: second, summary: "1 equity concern(s) flagged on planner output: exclusion.", created_at: ago(5) });
       }
-    }
+    }));
 
     gov.push({ school_id: school.id, actor_id: adminId, actor_name: "Sandbox Head of School", category: "admin", event_type: "school_created", summary: `Created school ${schoolName}.`, created_at: new Date(Date.now() - 22 * 86_400_000).toISOString() });
     await supabaseAdmin.from("governance_events").insert(gov as never);
