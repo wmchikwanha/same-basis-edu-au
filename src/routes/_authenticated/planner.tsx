@@ -535,6 +535,17 @@ function Planner() {
               title="Review before saving"
               hint="The original AI output stays on the left. Edit, regenerate or accept each student — nothing is saved until you decide."
             />
+            <div
+              role="note"
+              aria-label="AI safety and provenance safeguards"
+              className="mb-4 grid gap-2 rounded-xl border border-primary/30 bg-primary/5 p-4 text-sm text-foreground sm:grid-cols-2"
+            >
+              <p className="sm:col-span-2 font-semibold">AI safety and provenance safeguards active</p>
+              <p>✓ <strong>Equity screened:</strong> every output is checked for exclusion, lowered expectations, deficit or stereotyping language.</p>
+              <p>✓ <strong>Human in the loop:</strong> nothing becomes NCCD evidence until you accept it.</p>
+              <p>✓ <strong>Provenance kept:</strong> the original AI text is kept beside your edited version.</p>
+              <p>✓ <strong>Append-only governance log:</strong> each action is recorded for school review and cannot be deleted.</p>
+            </div>
             <div className="mb-4 flex flex-col gap-3 rounded-xl bg-muted/60 p-4">
               <p className="flex items-center gap-2 text-sm text-muted-foreground">
                 <FileText size={16} aria-hidden="true" />

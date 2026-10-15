@@ -69,13 +69,9 @@ export const listActivity = createServerFn({ method: "POST" })
     }));
   });
 
+/** Deletion is disabled: the audit trail is append-only for chain of custody. */
 export const clearActivity = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { error } = await context.supabase
-      .from("ai_activity_events")
-      .delete()
-      .eq("user_id", context.userId);
-    if (error) throw new Error(error.message);
-    return { ok: true as const };
+  .handler(async () => {
+    throw new Error("The audit trail is append-only and cannot be cleared.");
   });
