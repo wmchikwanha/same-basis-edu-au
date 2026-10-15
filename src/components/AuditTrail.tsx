@@ -395,22 +395,10 @@ export function AuditTrail() {
           <Download size={18} aria-hidden="true" />
           Export audit trail (CSV)
         </button>
-        <button
-          type="button"
-          onClick={() => {
-            void wipeActivity()
-              .then(() => {
-                setEvents([]);
-                toast.success("Audit trail cleared");
-              })
-              .catch(() => toast.error("We couldn't clear the audit trail."));
-          }}
-          disabled={events.length === 0}
-          className="inline-flex min-h-[44px] items-center gap-2 rounded-lg border border-destructive/40 px-4 text-sm font-semibold text-destructive hover:bg-destructive/10 disabled:opacity-60"
-        >
-          <Trash2 size={16} aria-hidden="true" />
-          Clear trail
-        </button>
+        <p className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Trash2 size={16} aria-hidden="true" className="opacity-50" />
+          Records are permanent: they cannot be edited or deleted, to keep a trustworthy chain of custody.
+        </p>
       </div>
     </section>
   );

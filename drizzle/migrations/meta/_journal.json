@@ -8,6 +8,13 @@
       "when": 1790251336007,
       "tag": "0000_school_governance",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1792042551531,
+      "tag": "0001_ai_activity_append_only",
+      "breakpoints": true
     }
   ]
 }
