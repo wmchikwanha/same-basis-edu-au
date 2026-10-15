@@ -1,7 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { AlertTriangle, ClipboardCheck, GraduationCap, Scale, School, ShieldCheck, Sparkles } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { AlertTriangle, ClipboardCheck, Download, GraduationCap, Scale, School, ShieldCheck, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { card, useSchool } from "@/lib/use-school";
+import { logAdminExport } from "@/lib/admin.functions";
+import { buildDossier } from "@/lib/dossier";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
   head: () => ({
@@ -21,6 +24,7 @@ const PILLARS = ["Consultation", "Adjustment", "Monitoring", "Review"];
 
 function Overview() {
   const { data, isLoading, error } = useSchool();
+  const logExport = useServerFn(logAdminExport);
   if (isLoading || !data)
     return (
       <AppShell title="School overview" description={error ? "We couldn't load the school. Refresh to try again." : "Loading school…"}>
@@ -48,6 +52,30 @@ function Overview() {
   return (
     <AppShell title={data.school.name} description="Head-of-school console: teacher oversight, whole-school NCCD evidence, AI governance and equity.">
       <div className="flex flex-col gap-6">
+        <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/30 bg-primary/5 p-4">
+          <div className="text-sm text-foreground">
+            <p className="flex items-center gap-2 font-semibold"><ShieldCheck size={16} className="text-primary" aria-hidden="true" /> Ethical AI & Compliance Dossier</p>
+            <p className="text-muted-foreground">One file with the legal basis, safeguards, consent register, equity flags and governance log.</p>
+          </div>
+          <button
+            type="button"
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-primary px-5 text-sm font-semibold text-primary-foreground"
+            onClick={() => {
+              const blob = new Blob([buildDossier(data)], { type: "text/markdown;charset=utf-8" });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `samebasis-compliance-dossier-${new Date().toISOString().slice(0, 10)}.md`;
+              document.body.appendChild(a);
+              a.click();
+              a.remove();
+              setTimeout(() => URL.revokeObjectURL(url), 30_000);
+              void logExport({ data: { summary: "Exported the Ethical AI & Compliance Dossier." } });
+            }}
+          >
+            <Download size={16} aria-hidden="true" /> Download dossier
+          </button>
+        </section>
         {(openFlags.length > 0 || noConsent.length > 0) && (
           <section className="rounded-xl border border-warning/40 bg-warning/10 p-4 text-sm text-foreground">
             <p className="flex items-center gap-2 font-semibold"><AlertTriangle size={16} aria-hidden="true" /> Needs your attention</p>
