@@ -46,7 +46,7 @@ interface AppState {
   addEvidenceLog: (log: EvidenceLog) => void;
   saveProfile: (patch: Partial<Omit<TeacherProfile, "id" | "aiConsentAt">>) => Promise<void>;
   resetDemo: () => Promise<void>;
-  refresh: () => Promise<void>;
+  refresh: (options?: { afterCurrent?: boolean }) => Promise<void>;
 }
 
 const AppStateContext = createContext<AppState | null>(null);
@@ -120,7 +120,13 @@ export function AppStateProvider({ children }: { children: ReactNode }) {
     }
   }, [applyPayload]);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (options?: { afterCurrent?: boolean }) => {
+    if (inFlight.current) {
+      if (!options?.afterCurrent) return inFlight.current;
+      // Sandbox role provisioning may finish after the sign-in refresh started.
+      // Wait for that older payload, then fetch the newly provisioned role.
+      await inFlight.current;
+    }
     if (inFlight.current) return inFlight.current;
     const promise = runRefresh().finally(() => {
       inFlight.current = null;

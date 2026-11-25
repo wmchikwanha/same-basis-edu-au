@@ -59,7 +59,13 @@ const adminNavItems = [
 ] as const;
 
 function useRole() {
-  return useAppState().appRole;
+  const { appRole } = useAppState();
+  // The admin layout has already verified this role server-side. Workspace
+  // loading can finish before sandbox provisioning grants the admin role.
+  const isAdminRoute = useRouterState({
+    select: (state) => state.matches.some((match) => match.routeId === "/_authenticated/admin"),
+  });
+  return isAdminRoute ? "admin" : appRole;
 }
 
 function NavList({ onNavigate }: { onNavigate?: () => void }) {
@@ -128,6 +134,8 @@ export function AppShell({
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [today, setToday] = useState("");
   const { profile } = useAppState();
+  const role = useRole();
+  const primaryMobileItems = role === "admin" ? adminNavItems.slice(0, 5) : mobileNavItems;
   const navigate = useNavigate();
 
   const initials =
@@ -253,7 +261,7 @@ export function AppShell({
         className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card lg:hidden"
       >
         <ul className="mx-auto flex max-w-lg">
-          {mobileNavItems.map(({ to, label, icon: Icon }) => (
+          {primaryMobileItems.map(({ to, label, icon: Icon }) => (
             <li key={to} className="flex-1">
               <Link
                 to={to}

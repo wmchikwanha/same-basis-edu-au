@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Navigation on admin routes uses the server-authorized admin layout match rather than waiting for workspace role state, so sandbox provisioning races cannot show teacher menus; shared routes use the workspace role.

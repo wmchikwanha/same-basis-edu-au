@@ -3,6 +3,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Info, Loader2, GraduationCap, Building2 } from "lucide-react";
 import { enterSandbox, type SandboxRole } from "@/lib/sandbox";
+import { useAppState } from "@/lib/app-state";
 import {
   ArrowRight,
   ClipboardCheck,
@@ -31,6 +32,8 @@ export const Route = createFileRoute("/")({
         content:
           "Moment-specific adjustments, crisis guidance, family messages and NCCD evidence in one warm, teacher-controlled tool.",
       },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Landing,
@@ -128,15 +131,16 @@ function Landing() {
 
 function RolePicker() {
   const navigate = useNavigate();
+  const { refresh } = useAppState();
   const [busy, setBusy] = useState<SandboxRole | null>(null);
 
   async function choose(role: SandboxRole) {
     setBusy(role);
     try {
       await enterSandbox(role);
-      // AppStateProvider refreshes in response to SIGNED_IN. Do not make the
-      // user wait for another (or, previously, two) complete workspace loads
-      // before the destination route can render.
+      // SIGNED_IN can load the workspace before the admin grant exists. Ensure
+      // shared pages also receive the final, server-provisioned role.
+      await refresh({ afterCurrent: true });
       await navigate({ to: role === "admin" ? "/admin" : "/dashboard", replace: true });
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't open the sandbox.");
