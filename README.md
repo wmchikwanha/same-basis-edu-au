@@ -24,3 +24,7 @@ cd <repository-name>
 npm i
 npm run dev
 ```
+
+## Attribution
+
+Developed by [Walter C.]( https://walter-m-chikwanha-au-professional-resume-portfolio.ai.studio/ )
