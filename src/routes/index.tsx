@@ -122,7 +122,7 @@ function Landing() {
 
       <footer className="border-t border-border/70 px-4 py-6 sm:px-6">
         <p className="mx-auto max-w-[1120px] text-center text-xs text-muted-foreground">
-          {footerText}
+          <>SameBasis | Developed by <a href="https://walter-m-chikwanha-au-professional-resume-portfolio.ai.studio/" target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-foreground">Walter C</a> | © 2026 All Rights Reserved</>
         </p>
       </footer>
     </div>
