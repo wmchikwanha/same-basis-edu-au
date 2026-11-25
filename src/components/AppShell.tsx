@@ -16,6 +16,7 @@ import {
   X,
   HelpCircle,
   Upload,
+  ArrowUpRight,
 } from "lucide-react";
 import { brand, demoUser, footerText } from "@/lib/brand";
 import { useAppState } from "@/lib/app-state";
@@ -251,7 +252,7 @@ export function AppShell({
 
         <footer className="border-t border-border/70 px-4 py-4 sm:px-6">
           <p className="mx-auto max-w-[1280px] text-center text-xs text-muted-foreground lg:text-left">
-            <>SameBasis | Developed by <a href="https://walter-m-chikwanha-au-professional-resume-portfolio.ai.studio/" target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-foreground">Walter C</a> | © 2026 All Rights Reserved</>
+            <>SameBasis | Developed by <a href="https://walter-m-chikwanha-au-professional-resume-portfolio.ai.studio/" target="_blank" rel="noreferrer" aria-label="Walter C. professional portfolio" className="inline-flex items-center gap-1 font-medium text-foreground underline decoration-border underline-offset-4 transition-colors hover:decoration-current">Walter C<ArrowUpRight size={12} strokeWidth={1.8} aria-hidden="true" /></a> | © 2026 All Rights Reserved</>
           </p>
         </footer>
       </div>
